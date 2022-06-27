@@ -68,7 +68,7 @@ while len(temp_primes) != 16: # generate 16 prime numbers
         temp_primes.append(inc)
     inc+=1
 
-def matrix_to_binary(matrix):
+def matrix_to_int(matrix):
     bits = 0
     for i in matrix:
         for j in i:
@@ -87,24 +87,19 @@ for i in range(8):
                                     int(len(temp_primes)/2)]) \
                                 [2:])>>3)))%2**64)
 
-H[0] = (matrix_to_binary(xz_tensordot_y)&trnsfm_tmp_ps[0])%2**64
-H[1] = (matrix_to_binary(zx_tensordot_y)&trnsfm_tmp_ps[1])%2**64
-H[2] = (matrix_to_binary(zy_tensordot_x)&trnsfm_tmp_ps[2])%2**64
-H[3] = (matrix_to_binary(yz_tensordot_x)&trnsfm_tmp_ps[3])%2**64
-H[4] = (matrix_to_binary(xy_tensordot_z)&trnsfm_tmp_ps[4])%2**64
-H[5] = (matrix_to_binary(yx_tensordot_z)&trnsfm_tmp_ps[5])%2**64
-H[6] = (matrix_to_binary(matmul(xx_tensordot_x,
-                                yy_tensordot_y))&
+H[0] = (matrix_to_int(xz_tensordot_y)&trnsfm_tmp_ps[0])%2**64
+H[1] = (matrix_to_int(zx_tensordot_y)&trnsfm_tmp_ps[1])%2**64
+H[2] = (matrix_to_int(zy_tensordot_x)&trnsfm_tmp_ps[2])%2**64
+H[3] = (matrix_to_int(yz_tensordot_x)&trnsfm_tmp_ps[3])%2**64
+H[4] = (matrix_to_int(xy_tensordot_z)&trnsfm_tmp_ps[4])%2**64
+H[5] = (matrix_to_int(yx_tensordot_z)&trnsfm_tmp_ps[5])%2**64
+H[6] = (matrix_to_int(matmul(xx_tensordot_x,
+                             yy_tensordot_y))&
         trnsfm_tmp_ps[6])%2**64
-H[7] = (matrix_to_binary(matmul(zz_tensordot_z,
-                                yy_tensordot_y))&
+H[7] = (matrix_to_int(matmul(zz_tensordot_z,
+                             yy_tensordot_y))&
         trnsfm_tmp_ps[7])%2**64
 
-for i in H:
-    print(hex(i)[2:])
-
-# bitwise and with 129th prime number that went through the same process as primes list. If they aren't all completly unique, use up to the 134th prime number.
-# print(hex(()
 
 # tensor product of pauli x and pauli z
 # 0  0     1  0
@@ -209,5 +204,3 @@ for i in H:
 # use abs function to convert all to positive integers. perceive the matrix values
 # as bits and convert to 8 64-bit unsigned integers and use a similiar logic as 
 # how the sha512 const H vector.
-
-# use tensor(sigmax() sigmaY) from qutip library etc. for more readable output
