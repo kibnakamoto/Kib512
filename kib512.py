@@ -1,5 +1,4 @@
 from numpy import *
-import qutip as qt
 
 # find the first 128 prime numbers
 primes = []
@@ -58,20 +57,55 @@ xx_tensordot_x = kron(kron(sigmax, sigmax), \
 zz_tensordot_z = kron(kron(sigmaz, sigmaz), \
                            sigmaz)
 yy_tensordot_y = kron(kron(sigmay, sigmay), \
-                           sigmay)
+                           sigmay) # do not include 
 var_xxx = ""
-bitmask = 0
 
-for i in zx_tensordot_y:
-    for j in i:
-        var_xxx += str(abs(~int(j)%2))
-        bitmask<<=1
-        bitmask|=abs(~int(j)%2)
+# calculate 129th to 137th prime numbers
+temp_primes = []
+inc = primes[len(primes)-1]+1
+while len(temp_primes) != 16: # generate 16 prime numbers
+    if (2**(inc-1)-1) % inc == 0:
+        temp_primes.append(inc)
+    inc+=1
+
+def matrix_to_binary(matrix):
+    bits = 0
+    for i in matrix:
+        for j in i:
+            bits<<=1
+            bits|=abs(~int(j)%2)
+    return bits
+
+H = [None]*8 # declare Hash list
+
+# transform temp primes
+trnsfm_tmp_ps = []
+for i in range(8):
+   trnsfm_tmp_ps.append((temp_primes[i]** \
+                       temp_primes[i+int(len(temp_primes)/2)]>> \
+                       int((len(bin(temp_primes[i]**temp_primes[i+ \
+                                    int(len(temp_primes)/2)]) \
+                                [2:])>>3)))%2**64)
+
+H[0] = (matrix_to_binary(xz_tensordot_y)&trnsfm_tmp_ps[0])%2**64
+H[1] = (matrix_to_binary(zx_tensordot_y)&trnsfm_tmp_ps[1])%2**64
+H[2] = (matrix_to_binary(zy_tensordot_x)&trnsfm_tmp_ps[2])%2**64
+H[3] = (matrix_to_binary(yz_tensordot_x)&trnsfm_tmp_ps[3])%2**64
+H[4] = (matrix_to_binary(xy_tensordot_z)&trnsfm_tmp_ps[4])%2**64
+H[5] = (matrix_to_binary(yx_tensordot_z)&trnsfm_tmp_ps[5])%2**64
+H[6] = (matrix_to_binary(matmul(xx_tensordot_x,
+                                yy_tensordot_y))&
+        trnsfm_tmp_ps[6])%2**64
+H[7] = (matrix_to_binary(matmul(zz_tensordot_z,
+                                yy_tensordot_y))&
+        trnsfm_tmp_ps[7])%2**64
+
+for i in H:
+    print(hex(i)[2:])
 
 # bitwise and with 129th prime number that went through the same process as primes list. If they aren't all completly unique, use up to the 134th prime number.
-# print(hex((int(var_xxx,2)&const_matrix[0][0])%2**64))
-print(var_xxx)
-print(bin(bitmask)[2:])
+# print(hex(()
+
 # tensor product of pauli x and pauli z
 # 0  0     1  0
 # 0  0     0 -1
