@@ -32,38 +32,46 @@ for i in range(8):
 
 # calculate the 8 64-bit values for final hash's starting value
 # zx
-x_tensordot_z = qt.tensor(qt.sigmax(), qt.sigmaz())
-z_tensordot_x = qt.tensor(qt.sigmaz(), qt.sigmax())
+sigmax = [[0,1],[1,0]]
+sigmay = [[0,-1],[1,0]]
+sigmaz = [[1,0],[0,-1]]
+x_tensordot_z = kron(sigmax, sigmaz)
+z_tensordot_x = kron(sigmaz, sigmax)
 
 # xy
-x_tensordot_y = qt.tensor(qt.sigmax(),qt.sigmay())
-y_tensordot_x = qt.tensor(qt.sigmay(),qt.sigmax())
+x_tensordot_y = kron(sigmax,sigmay)
+y_tensordot_x = kron(sigmay,sigmax)
 
 # yz
-y_tensordot_z = qt.tensor(qt.sigmay(), qt.sigmaz())
-z_tensordot_y = qt.tensor(qt.sigmaz(), qt.sigmay())
+y_tensordot_z = kron(sigmay, sigmaz)
+z_tensordot_y = kron(sigmaz, sigmay)
 
 # zxy
-xz_tensordot_y = qt.tensor(x_tensordot_z, qt.sigmay())
-zx_tensordot_y = qt.tensor(z_tensordot_x, qt.sigmay())
-zy_tensordot_x = qt.tensor(z_tensordot_y, qt.sigmax())
-yz_tensordot_x = qt.tensor(y_tensordot_z, qt.sigmax())
-xy_tensordot_z = qt.tensor(x_tensordot_y, qt.sigmaz())
-yx_tensordot_z = qt.tensor(y_tensordot_x, qt.sigmaz())
-xx_tensordot_x = qt.tensor(qt.sigmax(), qt.sigmax(), \
-                           qt.sigmax())
-zz_tensordot_z = qt.tensor(qt.sigmaz(), qt.sigmaz(), \
-                           qt.sigmaz())
-yy_tensordot_y = qt.tensor(qt.sigmay(), qt.sigmay(), \
-                           qt.sigmay())
+xz_tensordot_y = kron(x_tensordot_z, sigmay)
+zx_tensordot_y = kron(z_tensordot_x, sigmay)
+zy_tensordot_x = kron(z_tensordot_y, sigmax)
+yz_tensordot_x = kron(y_tensordot_z, sigmax)
+xy_tensordot_z = kron(x_tensordot_y, sigmaz)
+yx_tensordot_z = kron(y_tensordot_x, sigmaz)
+xx_tensordot_x = kron(kron(sigmax, sigmax), \
+                           sigmax)
+zz_tensordot_z = kron(kron(sigmaz, sigmaz), \
+                           sigmaz)
+yy_tensordot_y = kron(kron(sigmay, sigmay), \
+                           sigmay)
 var_xxx = ""
+bitmask = 0
 
-for i in xx_tensordot_x:
+for i in zx_tensordot_y:
     for j in i:
-        for k in j:
-            var_xxx += str(abs(~int(k)%2))
+        var_xxx += str(abs(~int(j)%2))
+        bitmask<<=1
+        bitmask|=abs(~int(j)%2)
+
 # bitwise and with 129th prime number that went through the same process as primes list. If they aren't all completly unique, use up to the 134th prime number.
-print(hex((int(var_xxx,2)&const_matrix[0][0])%2**64))
+# print(hex((int(var_xxx,2)&const_matrix[0][0])%2**64))
+print(var_xxx)
+print(bin(bitmask)[2:])
 # tensor product of pauli x and pauli z
 # 0  0     1  0
 # 0  0     0 -1
