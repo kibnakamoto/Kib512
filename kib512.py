@@ -87,6 +87,7 @@ for i in range(8):
                                     int(len(temp_primes)/2)]) \
                                 [2:])>>3)))%2**64)
 
+# try matmul matrix_to_int parameter with trnsfm_tmp_ps
 H[0] = (matrix_to_int(xz_tensordot_y)&trnsfm_tmp_ps[0])%2**64
 H[1] = (matrix_to_int(zx_tensordot_y)&trnsfm_tmp_ps[1])%2**64
 H[2] = (matrix_to_int(zy_tensordot_x)&trnsfm_tmp_ps[2])%2**64
@@ -99,7 +100,6 @@ H[6] = (matrix_to_int(matmul(xx_tensordot_x,
 H[7] = (matrix_to_int(matmul(zz_tensordot_z,
                              yy_tensordot_y))&
         trnsfm_tmp_ps[7])%2**64
-
 
 # tensor product of pauli x and pauli z
 # 0  0     1  0
