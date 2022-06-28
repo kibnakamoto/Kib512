@@ -88,18 +88,27 @@ for i in range(8):
                                 [2:])>>3)))%2**64)
 
 # try matmul matrix_to_int parameter with trnsfm_tmp_ps
-H[0] = (matrix_to_int(xz_tensordot_y)&trnsfm_tmp_ps[0])%2**64
-H[1] = (matrix_to_int(zx_tensordot_y)&trnsfm_tmp_ps[1])%2**64
-H[2] = (matrix_to_int(zy_tensordot_x)&trnsfm_tmp_ps[2])%2**64
-H[3] = (matrix_to_int(yz_tensordot_x)&trnsfm_tmp_ps[3])%2**64
-H[4] = (matrix_to_int(xy_tensordot_z)&trnsfm_tmp_ps[4])%2**64
-H[5] = (matrix_to_int(yx_tensordot_z)&trnsfm_tmp_ps[5])%2**64
+H[0] = (matrix_to_int(matmul(xz_tensordot_y,yy_tensordot_y))&
+        trnsfm_tmp_ps[0])%2**64
+H[1] = (matrix_to_int(matmul(zx_tensordot_y,yy_tensordot_y))&
+        trnsfm_tmp_ps[1])%2**64
+H[2] = (matrix_to_int(matmul(zy_tensordot_x,yy_tensordot_y))&
+        trnsfm_tmp_ps[2])%2**64
+H[3] = (matrix_to_int(matmul(yz_tensordot_x,yy_tensordot_y))&
+        trnsfm_tmp_ps[3])%2**64
+H[4] = (matrix_to_int(matmul(xy_tensordot_z,yy_tensordot_y))&
+        trnsfm_tmp_ps[4])%2**64
+H[5] = (matrix_to_int(matmul(yx_tensordot_z,yy_tensordot_y))&
+        trnsfm_tmp_ps[5])%2**64
 H[6] = (matrix_to_int(matmul(xx_tensordot_x,
                              yy_tensordot_y))&
         trnsfm_tmp_ps[6])%2**64
 H[7] = (matrix_to_int(matmul(zz_tensordot_z,
                              yy_tensordot_y))&
         trnsfm_tmp_ps[7])%2**64
+
+for i in H:
+    print(hex(i))
 
 # tensor product of pauli x and pauli z
 # 0  0     1  0
