@@ -30,11 +30,6 @@ for i in range(8):
         
         const_matrix[i].append(temp)
         primes_index+=1; # index of prime array
-# 277, 811, 407, 736
-# for r in const_matrix:
-    # print(r)
-    # for c in r:
-    #     print(hex(c))
 
 # calculate the 8 64-bit values for final hash's starting value
 # zx
@@ -113,10 +108,6 @@ H[6] = (matrix_to_int(matmul(xx_tensordot_x,
 H[7] = (matrix_to_int(matmul(zz_tensordot_z,
                              yy_tensordot_y))&
         trnsfm_tmp_ps[7])%2**64
-
-for i in const_matrix:
-    for j in i:
-        print(hex(j))
 
 # tensor product of pauli x and pauli z
 # 0  0     1  0
