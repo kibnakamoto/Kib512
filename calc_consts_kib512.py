@@ -1,4 +1,5 @@
 from numpy import *
+import sys
 
 # find the first 128 prime numbers
 primes = []
@@ -15,15 +16,21 @@ primes_index = 0;
 # calculate the constant values for the iteration matrix
 for i in range(8):
     for j in range(8):
-        # calculate the first 64 primes to the power of the last 64 primes
+        # calculate the first 64 primes to the power of the next 64 primes
         # then right-shift the closest byte size of those values
-        const_matrix[i].append((primes[primes_index]**primes[primes_index+ \
-                             int(len(primes)/2)]>>int((len(bin(primes[primes_index]** \
-                                                          primes[primes_index+ \
-                                                          int(len(primes)/2)]) \
-                                                         [2:])>>3)))%2**64)
+        temp = (primes[primes_index]** \
+                                primes[primes_index+ \
+                                int(len(primes)/2)]>> \
+                                int((len(bin(primes[primes_index]** \
+                                             primes[primes_index+ \
+                                             int(len(primes)/2)]) \
+                                         [2:])>>3)))
+        
+        temp = int(hex(temp)[2:18],16)
+        
+        const_matrix[i].append(temp)
         primes_index+=1; # index of prime array
-
+# 277, 811, 407, 736
 # for r in const_matrix:
     # print(r)
     # for c in r:
@@ -86,7 +93,7 @@ for i in range(8):
                        int((len(bin(temp_primes[i]**temp_primes[i+ \
                                     int(len(temp_primes)/2)]) \
                                 [2:])>>3)))%2**64)
-
+    
 # try matmul matrix_to_int parameter with trnsfm_tmp_ps
 H[0] = (matrix_to_int(matmul(xz_tensordot_y,yy_tensordot_y))&
         trnsfm_tmp_ps[0])%2**64
@@ -107,8 +114,9 @@ H[7] = (matrix_to_int(matmul(zz_tensordot_z,
                              yy_tensordot_y))&
         trnsfm_tmp_ps[7])%2**64
 
-for i in H:
-    print(hex(i))
+for i in const_matrix:
+    for j in i:
+        print(hex(j))
 
 # tensor product of pauli x and pauli z
 # 0  0     1  0
