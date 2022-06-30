@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stdint.h>
 #include <string>
+#include <sstream>
 
 #if !defined(UINT8_MAX)
     using uint8_t = unsigned char
@@ -10,17 +11,21 @@
 uint8_t** kib512_prep(std::string input)
 {
     uint8_t** matrix = nullptr;
-    matrix = new uint8_t*[8];
+    
+    // matrix width and height
     uint64_t len = input.length();
-    for(int c=0;c<8;c++) matrix[c] = new uint8_t[8];
+    uint64_t m_wh = ((((512-((len*8)+1)-64) % 512)-7)/8 + len + 9)/8;
+    std::cout << m_wh;
+    matrix = new uint8_t*[m_wh];
+    for(int c=0;c<8;c++) matrix[c] = new uint8_t[m_wh];
     
     // add delimeter to denote end of data
-    input += 0x90>>4;
+    input += 0x90;
     
     // do not pad if length is 64
     if(input.length() != 64) {
         for(int c=len+1;c<63;c++) {
-            input+='0'-48;
+            input+='0';
         }
     }
     
@@ -37,11 +42,13 @@ uint8_t** kib512_prep(std::string input)
 int main()
 {
     uint8_t** m = kib512_prep("abcd");
+    
+    std::cout << "\n\n" << in.length();
     for(int r=0;r<8;r++) {
         for(int c=0;c<8;c++) {
             // std::cout << m[r][c];
         }
     }
-    uint8_t sigmax1d = 0x90 >> 4; // sigmax as 1-d
+    // second delimeter equals length in hex
     return 0;
 }
