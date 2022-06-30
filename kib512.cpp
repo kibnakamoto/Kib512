@@ -34,11 +34,10 @@ uint8_t** kib512_prep(std::string input)
         input+='0';
     }
     
-    // get 64-bit hex length in hex
-    ss << std::setfill('0') << std::setw(16) << std::hex << (len<<2);
-    std::string hexlen = ss.str();
-    input+=hexlen;
-    std::cout  << std::setfill('0') << std::setw(16) << std::hex << (len*4);
+    // add length of input in hex to end of input input
+    ss << std::setfill('0') << std::setw(16) << std::hex << (len);
+    input+=ss.str();
+    
     // 1-d array to 2-d matrix
     for(int r=0;r<8;r++) {
         for(int c=0;c<m_ch;c++) {
