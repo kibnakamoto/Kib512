@@ -1,63 +1,214 @@
-import calc_consts_kib512 as consts
-import numpy as np
+from numpy import *
+import sys
 
-const_matrix = [
-    [0x159a300c24f5dc1e, 0x178f1324ac498bfc, 0x10e55f6926814653,
-     0x1963cf80d6276ccc,0x10980aa9695d807a, 0x1703f56bbe1f7f5e,
-     0x16eb052c4abc81fe, 0x1f190bb16583b88f], [0x1d6d15eb483d1a05,
-     0x1e2c7d2c722534b7, 0x14dcbefdb2afe52d, 0xf5fbc705a80df745,
-     0xe1803d026daf382f, 0x4817a3bcb90fa1de, 0x3b8d9167a61165bd,
-     0x400b71315483aecf], [0x7e253caa1049536c, 0x7143a810657de4e0,
-     0xba3d16917c91aae3, 0x249b4da86d970a00, 0x290ffdedae0a1c66,
-     0x8d490ccfccd45ebb, 0x1852f3c77fae1cb7, 0x8f078d043c3be329],
-    [0x568d492cc5140ae4, 0x1cd5bbf83190c484, 0x99d177432a40d119,
-     0x1f21998dc8c9145e, 0x560d95c1d691bf3f, 0x57131d9cde1633e5,
-     0xcccd035627a53b51, 0x13d653d8c3ae0192], [0x5d1e80c0123206a1,
-     0x91b1b3f312ac1be8, 0x19bc3eed09a866a2, 0x29ed711bc0303fb1,
-     0x35fa6009ed810bd6, 0x69a90fb1b95d63ae, 0x38bedd43ad759c34,
-     0xa787e2edc8133e84], [0x552c119614a1f4e5, 0x68d39af3ec9b831f,
-     0x3996ac49f898e965, 0x8d79f80825eb64f1, 0x5babe19fdfe4ec70, 
-     0x7aa6a18653c9a0cc, 0x510e3b69d44d759a, 0x3486650c8e18c529],
-    [0x2b2b4051acc6e9a5, 0x49a9817e3d56ff74, 0xc6fd82e30671aeb5,
-     0x20be895e589409fd, 0xd8adec17910a1d4f, 0x18882870301f5a0b,
-     0x225cb56188423cf3, 0x4b61cc25258ea5c8], [0x63f68eef219e6c01,
-     0x7c29a354966d3f55, 0x1cf4c5f3b98ce4de, 0x1476b731259de5f8, 
-     0x73642b2ec6c2a44b, 0x407adff58f6e054c, 0x811f7cbc6a7e08c7,
-     0x277c0323eb636b90]
-]
+# find the first 128 prime numbers
+primes = []
+const_matrix = [[] for i in range(8)] # 4096-bits
 
-""" pre-processing"""
-# user input as np.uint8 matrix
+inc = 2
+while len(primes) != 128:
+    if (2**(inc-1)-1) % inc == 0:
+        primes.append(inc)
+    inc+=1
 
-def prep_kib512(inp):
+primes_index = 0;
 
-    length = len(inp)
-    padlen = (((512-((length*8)+1)-128) % 512)-7)//8
+# calculate the constant values for the iteration matrix
+for i in range(8):
+    for j in range(8):
+        # calculate the first 64 primes to the power of the next 64 primes
+        # then right-shift the closest byte size of those values
+        temp = (primes[primes_index]** \
+                                primes[primes_index+ \
+                                int(len(primes)/2)]>> \
+                                int((len(bin(primes[primes_index]** \
+                                             primes[primes_index+ \
+                                             int(len(primes)/2)]) \
+                                         [2:])>>3)))
+        
+        temp = int(hex(temp)[2:18],16)
+        
+        const_matrix[i].append(temp)
+        primes_index+=1; # index of prime array
+
+# calculate the 8 64-bit values for final hash's starting value
+# zx
+sigmax = [[0,1],[1,0]]
+sigmay = [[0,-1],[1,0]]
+sigmaz = [[1,0],[0,-1]]
+x_tensordot_z = kron(sigmax, sigmaz)
+z_tensordot_x = kron(sigmaz, sigmax)
+
+# xy
+x_tensordot_y = kron(sigmax,sigmay)
+y_tensordot_x = kron(sigmay,sigmax)
+
+# yz
+y_tensordot_z = kron(sigmay, sigmaz)
+z_tensordot_y = kron(sigmaz, sigmay)
+
+# zxy
+xz_tensordot_y = kron(x_tensordot_z, sigmay)
+zx_tensordot_y = kron(z_tensordot_x, sigmay)
+zy_tensordot_x = kron(z_tensordot_y, sigmax)
+yz_tensordot_x = kron(y_tensordot_z, sigmax)
+xy_tensordot_z = kron(x_tensordot_y, sigmaz)
+yx_tensordot_z = kron(y_tensordot_x, sigmaz)
+xx_tensordot_x = kron(kron(sigmax, sigmax), \
+                           sigmax)
+zz_tensordot_z = kron(kron(sigmaz, sigmaz), \
+                           sigmaz)
+yy_tensordot_y = kron(kron(sigmay, sigmay), \
+                           sigmay) # do not include 
+var_xxx = ""
+
+# calculate 129th to 137th prime numbers
+temp_primes = []
+inc = primes[len(primes)-1]+1
+while len(temp_primes) != 16: # generate 16 prime numbers
+    if (2**(inc-1)-1) % inc == 0:
+        temp_primes.append(inc)
+    inc+=1
+
+def matrix_to_int(matrix):
+    bits = 0
+    for i in matrix:
+        for j in i:
+            bits<<=1
+            bits|=abs(~int(j)%2)
+    return bits
+
+H = [None]*8 # declare Hash list
+
+# transform temp primes
+trnsfm_tmp_ps = []
+for i in range(8):
+   trnsfm_tmp_ps.append((temp_primes[i]** \
+                       temp_primes[i+int(len(temp_primes)/2)]>> \
+                       int((len(bin(temp_primes[i]**temp_primes[i+ \
+                                    int(len(temp_primes)/2)]) \
+                                [2:])>>3)))%2**64)
     
-    # matrix column height
-    matrix_colh = (padlen + length + 17)//8;
-    matrix = np.eye(8, matrix_colh)
+# try matmul matrix_to_int parameter with trnsfm_tmp_ps
+H[0] = (matrix_to_int(matmul(xz_tensordot_y,yy_tensordot_y))&
+        trnsfm_tmp_ps[0])%2**64
+H[1] = (matrix_to_int(matmul(zx_tensordot_y,yy_tensordot_y))&
+        trnsfm_tmp_ps[1])%2**64
+H[2] = (matrix_to_int(matmul(zy_tensordot_x,yy_tensordot_y))&
+        trnsfm_tmp_ps[2])%2**64
+H[3] = (matrix_to_int(matmul(yz_tensordot_x,yy_tensordot_y))&
+        trnsfm_tmp_ps[3])%2**64
+H[4] = (matrix_to_int(matmul(xy_tensordot_z,yy_tensordot_y))&
+        trnsfm_tmp_ps[4])%2**64
+H[5] = (matrix_to_int(matmul(yx_tensordot_z,yy_tensordot_y))&
+        trnsfm_tmp_ps[5])%2**64
+H[6] = (matrix_to_int(matmul(xx_tensordot_x,
+                             yy_tensordot_y))&
+        trnsfm_tmp_ps[6])%2**64
+H[7] = (matrix_to_int(matmul(zz_tensordot_z,
+                             yy_tensordot_y))&
+        trnsfm_tmp_ps[7])%2**64
 
-    inp+=str(0x90) # add delimeter after end of data
-    inp+='0'*padlen # pad
-    inp+=hex(length)[2:].zfill(16) # add length
-    arr = np.array(bytearray(inp.encode('utf-8')), dtype=np.uint8)
-    for i in range(0, 8):
-        for j in range(0, matrix_colh):
-            matrix[i,j] = arr[i+j*8]
-    
+# tensor product of pauli x and pauli z
+# 0  0     1  0
+# 0  0     0 -1
+# 1  0     0  0
+# 0 -1     0  0
+# tensor product of pauli z and pauli x
+# 0  1     0  0
+# 1  0     0  0
+# 0  0     0 -1
+# 0  0    -1  0
 
-""" pre-compression """
-# top and bottom row and second top and second below of the input matrix
+# tensor product of pauli x and pauli y
+# 0  0     0 -1
+# 0  0     1  0
+# 0 -1     0  0
+# 0  1     0  0
+# tensor product of pauli y and pauli x
+# 0  0     0 -1
+# 0  0    -1  0
+# 0  1     0  0
+# 1  0     0  0
 
-# endiennes of message
+# tensor product of pauli y and pauli z
+# 0  0    -1  0
+# 0  0     0  1
+# 1  0     0  0
+# 0 -1     0  0
+# tensor product of pauli z and pauli y
+# 0 -1     0  0
+# 1  0     0  0
+# 0  0     0  1
+# 0  0    -1  0
 
-""" compression function """
-# how many rounds for compression?
+# xz_tensordot_y
+# 0  0     0  0     0 -1     0  0
+# 0  0     0  0     1  0     0  0
+# 0  0     0  0     0  0     0  1
+# 0  0     0  0     0  0    -1  0
+# 0 -1     0  0     0  0     0  0
+# 1  0     0  0     0  0     0  0
+# 0  0     0  1     0  0     0  0
+# 0  0    -1  0     0  0     0  0
 
-# matrix multipication with bitmasking
+# zx_tensordot_y
+# 0  0     0 -1     0  0     0  0
+# 0  0     1  0     0  0     0  0
+# 0 -1     0  0     0  0     0  0
+# 1  0     0  0     0  0     0  0
+# 0  0     0  0     0  0     0  1
+# 0  0     0  0     0  0    -1  0
+# 0  0     0  0     0  1     0  0
+# 0  0     0  0    -1  0     0  0
 
-# have mutiple mini compression functions for the main one
+# zy_tensordot_x
+# 0  0     0 -1     0  0     0  0
+# 0  0    -1  0     0  0     0  0
+# 0  1     0  0     0  0     0  0
+# 1  0     0  0     0  0     0  0
+# 0  0     0  0     0  0     0  1
+# 0  0     0  0     0  0     1  0
+# 0  0     0  0     0 -1     0  0
+# 0  0     0  0    -1  0     0  0
 
-inp = "abcd"
-prep_kib512(inp)
+# yz_tensordot_x
+# 0  0     0  0     0 -1     0  0
+# 0  0     0  0    -1  0     0  0
+# 0  0     0  0     0  0     0  1
+# 0  0     0  0     0  0     1  0
+# 0  1     0  0     0  0     0  0
+# 1  0     0  0     0  0     0  0
+# 0  0     0 -1     0  0     0  0
+# 0  0    -1  0     0  0     0  0
+
+# xy_tensordot_z
+# 0  0     0  0     0  0    -1  0
+# 0  0     0  0     0  0     0  1
+# 0  0     0  0     1  0     0  0
+# 0  0     0  0     0 -1     0  0
+# 0  0    -1  0     0  0     0  0
+# 0  0     0  1     0  0     0  0
+# 1  0     0  0     0  0     0  0
+# 0 -1     0  0     0  0     0  0
+
+# yx_tensordot_z
+# 0  0     0  0     0  0    -1  0
+# 0  0     0  0     0  0     0  1
+# 0  0     0  0    -1  0     0  0
+# 0  0     0  0     0  1     0  0
+# 0  0     1  0     0  0     0  0
+# 0  0     0 -1     0  0     0  0
+# 1  0     0  0     0  0     0  0
+# 0 -1     0  0     0  0     0  0
+
+# (xx_tensordot_x bitor yy_tensordot_y bitor xx_tensordot_x) % 0x2
+
+# (zz_tensordot_z bitor yy_tensordot_y bitor xx_tensordot_x) % 0x2
+
+# all the matrices have to be a combination of each other
+
+# 8 final matrices in total, use bitwise not since most numbers are zeros.
+# use abs function to convert all to positive integers. perceive the matrix values
+# as bits and convert to 8 64-bit unsigned integers and use a similiar logic as 
+# how the sha512 const H vector.
