@@ -94,27 +94,34 @@ uint64_t ***prec_kib512(uint8_t **matrix, uint64_t m_ch=8)
             manip_m[i][j] = new uint64_t[8];
             for(int k=0;k<8;k++) {
                 uint64_t temp=0;
-                for(int x=0;x<8;x++) {
-                    temp|=(uint64_t)matrix[k][x+i*8] << 56-x*8;
-                }
-                // temp = ((uint64_t)matrix[j][i*8+0] << 56) |
-                //       ((uint64_t)matrix[j][i*8+1] << 48) |
-                //       ((uint64_t)matrix[j][i*8+2] << 40) |
-                //       ((uint64_t)matrix[j][i*8+3] << 32) |
-                //       ((uint64_t)matrix[j][i*8+4] << 24) |
-                //       ((uint64_t)matrix[j][i*8+5] << 16) |
-                //       ((uint64_t)matrix[j][i*8+6] <<  8) |
-                //       ((uint64_t)matrix[j][i*8+7]);
-                std::cout << std::hex << temp << "\n";
                 
-                // data in matrix has to be big endian
-                if constexpr(std::endian::native == std::endian::little) {
-                    manip_m[i][j][k] = __builtin_bswap64(temp &
-                                                         0xffffffffffffffffULL);
+                // add matrix values only ones to avoid repetition 
+                if(loop_count < m_ch) {
+                    for(int x=0;x<8;x++) {
+                        temp|=(uint64_t)matrix[k][x+i*8] << 56-x*8;
+                    }
+                    // temp = ((uint64_t)matrix[j][i*8+0] << 56) |
+                    //       ((uint64_t)matrix[j][i*8+1] << 48) |
+                    //       ((uint64_t)matrix[j][i*8+2] << 40) |
+                    //       ((uint64_t)matrix[j][i*8+3] << 32) |
+                    //       ((uint64_t)matrix[j][i*8+4] << 24) |
+                    //       ((uint64_t)matrix[j][i*8+5] << 16) |
+                    //       ((uint64_t)matrix[j][i*8+6] <<  8) |
+                    //       ((uint64_t)matrix[j][i*8+7]);
+                    std::cout << std::hex << temp << "\n";
+                    
+                    // data in matrix has to be big endian
+                    if constexpr(std::endian::native == std::endian::little) {
+                        manip_m[i][j][k] = __builtin_bswap64(temp &
+                                                             0xffffffffffffffffULL);
+                    } else {
+                        manip_m[i][j][k] = temp & 0xffffffffffffffffULL;
+                    }
+                    loop_count++;
                 } else {
-                    manip_m[i][j][k] = temp & 0xffffffffffffffffULL;
+                    // padding
+                    manip_m[i][j][k] = 0x0000000000000000ULL;
                 }
-                loop_count++;
             }
         }
     }
