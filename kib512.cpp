@@ -39,6 +39,12 @@ const uint64_t const_matrix[8][8] = {
      0x277c0323eb636b90ULL}
 };
 
+const uint64_t hash[8] {
+    0x5287173768046659ULL, 0x1388c1a81885db29ULL, 0xc582055c7b0f1a24ULL,
+    0x9be22d058c2ae082ULL, 0xa36b2344c3b2e0d0ULL, 0x8b74c2c08074d4b1ULL,
+    0x2a1c87eb1011bd80ULL, 0x64edcba54a4d0a5aULL
+};
+
 // pre-processing of kib512
 uint8_t** kib512_prep(std::string input)
 {
@@ -81,26 +87,36 @@ uint64_t ***prec_kib512(uint8_t **matrix, uint64_t m_ch=8)
     // initialize manipulation matrix with input matrix
     uint64_t ***manip_m = nullptr;
     manip_m = new uint64_t **[m_ch/8];
-    for(int32_t i=0;i<m_ch/8;i++) {
+    uint64_t loop_count = 0;
+    for(uint32_t i=0;i<m_ch/8;i++) {
         manip_m[i] = new uint64_t *[8];
         for(int j=0;j<8;j++) {
             manip_m[i][j] = new uint64_t[8];
-            for(int k=0,n=56;k<8,n>=0;k++,n-=8) {
+            for(int k=0;k<8;k++) {
                 uint64_t temp=0;
-                for(int32_t x=0;x<8;x++) {
-                    temp<<=x*2;
-                    temp|=matrix[j][x*i];
+                for(int x=0;x<8;x++) {
+                    temp|=(uint64_t)matrix[k][x+i*8] << 56-x*8;
                 }
+                // temp = ((uint64_t)matrix[j][i*8+0] << 56) |
+                //       ((uint64_t)matrix[j][i*8+1] << 48) |
+                //       ((uint64_t)matrix[j][i*8+2] << 40) |
+                //       ((uint64_t)matrix[j][i*8+3] << 32) |
+                //       ((uint64_t)matrix[j][i*8+4] << 24) |
+                //       ((uint64_t)matrix[j][i*8+5] << 16) |
+                //       ((uint64_t)matrix[j][i*8+6] <<  8) |
+                //       ((uint64_t)matrix[j][i*8+7]);
                 std::cout << std::hex << temp << "\n";
-                manip_m[i][j][k] = temp << n & 0xffffffffffffffffULL;
-                continue;
+                
+                // data in matrix has to be big endian
+                if constexpr(std::endian::native == std::endian::little) {
+                    manip_m[i][j][k] = __builtin_bswap64(temp &
+                                                         0xffffffffffffffffULL);
+                } else {
+                    manip_m[i][j][k] = temp & 0xffffffffffffffffULL;
+                }
+                loop_count++;
             }
         }
-    }
-    // what if there is multiple blocks? has to loop like x=m_ch-8 x < m_ch
-    
-    if constexpr(std::endian::native == std::endian::little) {
-        
     }
     
     return manip_m;
