@@ -29,27 +29,35 @@ const_matrix = [
 """ pre-processing"""
 # user input as np.uint8 matrix
 
-# multiple of 8 by 8? 512-bit input. 
+def prep_kib512(inp):
 
-# how will the multi-block processing work? xor them, add them?
+    length = len(inp)
+    padlen = (((512-((len*8)+1)-128) % 512)-7)/8
+    
+    # matrix column height
+    matrix_colh = (padlen + length + 17)/8;
+    matrix = np.eye(8,matrix_colh)
+    
+    inp+='0'*pad # pad
+    inp+=hex(inp)[2:].zfill(16) # add length
+    
+    arr = np.array(bytearray(inp.encode('utf-8')), dtype=np.uint8)
+    for i in range(0, 8):
+        for j in range(0, matrix_colh):
+            matrix[i,j] = arr[i+j*8]
+    
 
-# flag indicating end of data
-
-# flag indicating end of block
+""" pre-compression """
+# top and bottom row and second top and second below of the input matrix
 
 # endiennes of message
 
-""" compression word matrix function """
-# define size of single block and how to compress each block
-
-# 4 by 4 matrix for each.
-# top and bottom row and second top and second below of the input matrix
-
 """ compression function """
-# how many rounds for compression? 
+# how many rounds for compression?
 
 # matrix multipication with bitmasking
 
 # have mutiple mini compression functions for the main one
 
-# value depending on size? second parameter for size of hash? this would mean the output isn't only 512-bits. Check BLAKE2
+inp = "abcd"
+prep_kib512(inp)
