@@ -26,21 +26,28 @@ const_matrix = [
      0x277c0323eb636b90]
 ]
 
+hash = [
+    0x5287173768046659, 0x1388c1a81885db29, 0xc582055c7b0f1a24,
+    0x9be22d058c2ae082, 0xa36b2344c3b2e0d0, 0x8b74c2c08074d4b1,
+    0x2a1c87eb1011bd80, 0x64edcba54a4d0a5a
+]
+
+
 """ pre-processing"""
 # user input as np.uint8 matrix
 
 def prep_kib512(inp):
 
     length = len(inp)
-    padlen = (((512-((len*8)+1)-128) % 512)-7)/8
+    padlen = (((512-((length*8)+1)-128) % 512)-7)//8
     
     # matrix column height
-    matrix_colh = (padlen + length + 17)/8;
-    matrix = np.eye(8,matrix_colh)
-    
-    inp+='0'*pad # pad
-    inp+=hex(inp)[2:].zfill(16) # add length
-    
+    matrix_colh = (padlen + length + 17)//8;
+    matrix = np.eye(8, matrix_colh)
+
+    inp+=str(0x90) # add delimeter after end of data
+    inp+='0'*padlen # pad
+    inp+=hex(length)[2:].zfill(16) # add length
     arr = np.array(bytearray(inp.encode('utf-8')), dtype=np.uint8)
     for i in range(0, 8):
         for j in range(0, matrix_colh):
