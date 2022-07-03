@@ -16,10 +16,11 @@
 
 // pre-processing of kib512
 class Kib512 {
-    public:
+    private:
     uint64_t m_ch;
     
-    const uint64_t const_m[8][8] = {
+    public:
+    static constexpr uint64_t const const_m[8][8] = {
         {0x159a300c24f5dc1eULL, 0x178f1324ac498bfcULL, 0x10e55f6926814653ULL,
          0x1963cf80d6276cccULL,0x10980aa9695d807aULL, 0x1703f56bbe1f7f5eULL,
          0x16eb052c4abc81feULL, 0x1f190bb16583b88fULL}, {0x1d6d15eb483d1a05ULL,
@@ -44,7 +45,7 @@ class Kib512 {
          0x277c0323eb636b90ULL}
     };
     
-    uint64_t hash[8] {
+    mutable uint64_t hash[8] {
         0x5287173768046659ULL, 0x1388c1a81885db29ULL, 0xc582055c7b0f1a24ULL,
         0x9be22d058c2ae082ULL, 0xa36b2344c3b2e0d0ULL, 0x8b74c2c08074d4b1ULL,
         0x2a1c87eb1011bd80ULL, 0x64edcba54a4d0a5aULL
@@ -81,10 +82,16 @@ class Kib512 {
             }
         }
         
+        // problem might be in 2d matrix instead of 3d. hopefully it is.
+        for(int i=0;i<8;i++) {
+            for(int j=0;j<m_ch;j++) {
+                std::cout << std::hex << matrix[i][j]+0;
+            }std::cout << std::endl;
+        }
         return matrix;
     }
     
-    uint64_t ***prec_kib512(uint8_t **matrix, uint64_t m_ch=8)
+    uint64_t ***prec_kib512(uint8_t **matrix)
     {
         // for compression have 
         // initialize manipulation matrix with input matrix
@@ -100,17 +107,17 @@ class Kib512 {
                     
                     // add matrix values while avoiding repetition of values
                     if(loop_count < m_ch) {
-                        for(int x=0,y=n-8;x<8,y<=n;x++,y++) {
+                        for(int x=0,y=n-8;x<8,y<n;x++,y++) {
                             temp|=(uint64_t)matrix[k][y] << 56-x*8;
                         }
-                        std::cout << std::hex << temp << "\n";
+                        // std::cout << std::hex << temp << "\n";
                         
                         // data in matrix has to be big endian
                         if constexpr(std::endian::native == std::endian::little) {
-                            manip_m[i][j][k]=__builtin_bswap64(temp &
-                                                               0xffffffffffffffffULL);
+                            manip_m[n/8-1][j][k] = __builtin_bswap64(temp &
+                                                                     0xffffffffffffffffULL);
                         } else {
-                            manip_m[i][j][k] = temp & 0xffffffffffffffffULL;
+                            manip_m[n/8-1][j][k] = temp & 0xffffffffffffffffULL;
                         }
                         loop_count++;
                     } else {
@@ -120,9 +127,13 @@ class Kib512 {
                 }
             }
         }
-        
+        // TODO: print manip_m to see if value correct
+        // i value probably has to be replaced with n/8-1 but there is
+        // segmentation fault.
         return manip_m;
     }
+    
+    void hash_kib512(uint64_t*** manip_m); // compression function
 };
 
 int main()
@@ -130,7 +141,7 @@ int main()
     Kib512 kib512 = Kib512();
     std::string in = "abcdefghqwertyuioplkjhgfdsazxcvbnm1234567890!@#$\%^&*()\\/";
     uint8_t **m = kib512.kib512_prep(in);
-    uint64_t ***manipm = kib512.prec_kib512(m, kib512.m_ch);
+    uint64_t ***manipm = kib512.prec_kib512(m);
     
     for(int i=0;i<8;i++) {
         for(int j=0;j<8;j++) {
