@@ -6,6 +6,9 @@
 #include <cmath>
 #include <bit>
 
+// IMPORTANT:
+// matrix variable is correct, the wrong method was used to access it.
+
 #if !defined(UINT8_MAX)
     using uint8_t = unsigned char
 #elif !defined(UINT32_MAX)
@@ -77,17 +80,17 @@ class Kib512 {
         
         // 1-d array to 2-d matrix
         for(int r=0;r<8;r++) {
-            for(int c=0;c<m_ch;c++) {
-                matrix[r][c] = (uint8_t)input[r*8+c]; // input ordered as row
+            for(uint64_t c=0;c<m_ch;c++) {
+                matrix[r][c] = (uint8_t)input[r*m_ch+c]; // input ordered as row
             }
         }
         
-        // problem might be in 2d matrix instead of 3d. hopefully it is.
-        for(int i=0;i<8;i++) {
-            for(int j=0;j<m_ch;j++) {
-                std::cout << std::hex << matrix[i][j]+0;
-            }std::cout << std::endl;
-        }
+        for(int r=0;r<8;r++) {
+            for(uint64_t c=0;c<m_ch;c++) {
+                std::cout << std::hex << matrix[r][c]+0;
+            }
+        }std::cout << std::endl;
+        
         return matrix;
     }
     
@@ -97,39 +100,78 @@ class Kib512 {
         // initialize manipulation matrix with input matrix
         uint64_t ***manip_m = nullptr;
         manip_m = new uint64_t **[m_ch/8];
-        uint64_t loop_count = 0; 
-        for(uint64_t i=0;i<m_ch/8;i++) {
-            manip_m[i] = new uint64_t *[8];
-            for(int j=0,n=8;j<8,n<=m_ch;j++,n+=8) {
-                manip_m[i][j] = new uint64_t[8];
-                for(int k=0;k<8;k++) {
-                    uint64_t temp=0;
+        uint64_t loop_count = 0;
+        // for(uint64_t i=0;i<m_ch/8;i++) {
+            // manip_m[i] = new uint64_t *[8];
+        //     for(int j=0,n=0;j<8,n<=m_ch;j++,n+=8) {
+        //         manip_m[i][j] = new uint64_t[8];
+        //         for(int k=0;k<8;k++) { // a single block stored in here
+        //             uint64_t temp=0;
                     
-                    // add matrix values while avoiding repetition of values
-                    if(loop_count < m_ch) {
-                        for(int x=0,y=n-8;x<8,y<n;x++,y++) {
-                            temp|=(uint64_t)matrix[k][y] << 56-x*8;
-                        }
-                        // std::cout << std::hex << temp << "\n";
+        //             // add matrix values while avoiding repetition of values
+        //             // if(loop_count < m_ch) {
+        //                 for(int x=0;x<8;x++) {
+        //                     temp or_eq (uint64_t)matrix[k][x+i*8] << 56-x*8;
+        //                 }
+        //                 std::cout << std::hex << temp << "\n";
                         
-                        // data in matrix has to be big endian
-                        if constexpr(std::endian::native == std::endian::little) {
-                            manip_m[n/8-1][j][k] = __builtin_bswap64(temp &
-                                                                     0xffffffffffffffffULL);
-                        } else {
-                            manip_m[n/8-1][j][k] = temp & 0xffffffffffffffffULL;
-                        }
-                        loop_count++;
-                    } else {
-                        // padding
-                        manip_m[i][j][k] = 0x0000000000000000ULL;
-                    }
+        //                 // data in matrix has to be big endian
+        //                 if constexpr(std::endian::native == std::endian::little) {
+        //                     manip_m[n/8-1][0][k] = __builtin_bswap64(temp &
+        //                                                          0xffffffffffffffffULL);
+        //                 } else {
+        //                     manip_m[n/8-1][0][k] = temp & 0xffffffffffffffffULL;
+        //                 }
+                        
+        //                 // padding
+        //                 if(j != 0) manip_m = 0x0000000000000000ULL;
+        //                 loop_count++;
+        //             // } else {
+        //             //     // padding
+        //             //     manip_m[i][j][k] = 0x0000000000000000ULL;
+        //             // }
+        //         }
+        //     }
+        // }
+        
+    for(int i=0;i<m_ch/8;i++) {
+        manip_m[i] = new uint64_t *[8];
+        for(int j=0;j<8;j++) {
+            manip_m[i][j] = new uint64_t[8];
+            for(int k=0;k<8;k++) manip_m[i][j][k] = 0x0000000000000000ULL;
+        }
+    }
+
+        for(int j=0;j<8;j++) {
+            for(int i=0;i<m_ch/8;i++) {
+                uint64_t temp=0;
+                // add matrix values while avoiding repetition of values
+                for(int x=0;x<8;x++) {
+                    temp or_eq (uint64_t)matrix[j][x+i*8] << 56-x*8;
+                    std::cout << std::hex << matrix[j][x+i*8]+0;
                 }
+                // std::cout << std::hex << temp << "";
+                
+                // data in matrix has to be big endian
+                if constexpr(std::endian::native == std::endian::little) {
+                    manip_m[i][0][j] = __builtin_bswap64(temp &
+                                                         0xffffffffffffffffULL);
+                } else {
+                    manip_m[i][0][j] = temp & 0xffffffffffffffffULL;
+                }
+                // segmentation fault. use different loop, not
+                // good for speed but would work if the idea of this line of code
+                // is correct.
+                // manip_m[i][1][j] = 0x0000000000000000ULL;
+                // manip_m[i][2][j] = 0x0000000000000000ULL;
+                // manip_m[i][3][j] = 0x0000000000000000ULL;
+                // manip_m[i][4][j] = 0x0000000000000000ULL;
+                // manip_m[i][5][j] = 0x0000000000000000ULL;
+                // manip_m[i][6][j] = 0x0000000000000000ULL;
+                // manip_m[i][7][j] = 0x0000000000000000ULL;
             }
         }
-        // TODO: print manip_m to see if value correct
-        // i value probably has to be replaced with n/8-1 but there is
-        // segmentation fault.
+        
         return manip_m;
     }
     
