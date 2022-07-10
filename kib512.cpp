@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <cmath>
 #include <bit>
+#include<assert.h>
 
 // IMPORTANT:
 // matrix variable is correct, the wrong method was used to access it.
@@ -101,81 +102,80 @@ class Kib512 {
         uint64_t ***manip_m = nullptr;
         manip_m = new uint64_t **[m_ch/8];
         uint64_t loop_count = 0;
-        // for(uint64_t i=0;i<m_ch/8;i++) {
-            // manip_m[i] = new uint64_t *[8];
-        //     for(int j=0,n=0;j<8,n<=m_ch;j++,n+=8) {
-        //         manip_m[i][j] = new uint64_t[8];
-        //         for(int k=0;k<8;k++) { // a single block stored in here
-        //             uint64_t temp=0;
-                    
-        //             // add matrix values while avoiding repetition of values
-        //             // if(loop_count < m_ch) {
-        //                 for(int x=0;x<8;x++) {
-        //                     temp or_eq (uint64_t)matrix[k][x+i*8] << 56-x*8;
-        //                 }
-        //                 std::cout << std::hex << temp << "\n";
-                        
-        //                 // data in matrix has to be big endian
-        //                 if constexpr(std::endian::native == std::endian::little) {
-        //                     manip_m[n/8-1][0][k] = __builtin_bswap64(temp &
-        //                                                          0xffffffffffffffffULL);
-        //                 } else {
-        //                     manip_m[n/8-1][0][k] = temp & 0xffffffffffffffffULL;
-        //                 }
-                        
-        //                 // padding
-        //                 if(j != 0) manip_m = 0x0000000000000000ULL;
-        //                 loop_count++;
-        //             // } else {
-        //             //     // padding
-        //             //     manip_m[i][j][k] = 0x0000000000000000ULL;
-        //             // }
-        //         }
-        //     }
-        // }
         
-    for(int i=0;i<m_ch/8;i++) {
-        manip_m[i] = new uint64_t *[8];
-        for(int j=0;j<8;j++) {
-            manip_m[i][j] = new uint64_t[8];
-            for(int k=0;k<8;k++) manip_m[i][j][k] = 0x0000000000000000ULL;
+        // initialize 3-d matrix to zero to indexes that won't be initialized to
+        // values of 2-d matrix
+        for(int i=0;i<m_ch/8;i++) {
+            manip_m[i] = new uint64_t *[8];
+            manip_m[i][0] = new uint64_t[8];
+            for(int j=1;j<8;j++) { // to avoid unnecesary padding, j=1
+                manip_m[i][j] = new uint64_t[8];
+                for(int k=0;k<8;k++) manip_m[i][j][k] = 0x0000000000000000ULL;
+            }
         }
-    }
-
+        
+        uint64_t mmi=0; // manipulation matrix i
+        int mmj=0;  // manipulation matrix j
         for(int j=0;j<8;j++) {
             for(int i=0;i<m_ch/8;i++) {
                 uint64_t temp=0;
                 // add matrix values while avoiding repetition of values
                 for(int x=0;x<8;x++) {
                     temp or_eq (uint64_t)matrix[j][x+i*8] << 56-x*8;
-                    std::cout << std::hex << matrix[j][x+i*8]+0;
                 }
                 // std::cout << std::hex << temp << "";
                 
-                // data in matrix has to be big endian
+                // NOTE: wrong method to add to 3-d matrix
+                // TODO: initialize manip_m in a different way without changing
+                //       loops
+                
+                // data in matrix has to be big-endian
                 if constexpr(std::endian::native == std::endian::little) {
-                    manip_m[i][0][j] = __builtin_bswap64(temp &
-                                                         0xffffffffffffffffULL);
+                    manip_m[mmi][0][mmj] = __builtin_bswap64(temp &
+                                                             0xffffffffffffffffULL);
                 } else {
-                    manip_m[i][0][j] = temp & 0xffffffffffffffffULL;
+                    manip_m[mmi][0][mmj] = temp & 0xffffffffffffffffULL;
                 }
-                // segmentation fault. use different loop, not
-                // good for speed but would work if the idea of this line of code
-                // is correct.
-                // manip_m[i][1][j] = 0x0000000000000000ULL;
-                // manip_m[i][2][j] = 0x0000000000000000ULL;
-                // manip_m[i][3][j] = 0x0000000000000000ULL;
-                // manip_m[i][4][j] = 0x0000000000000000ULL;
-                // manip_m[i][5][j] = 0x0000000000000000ULL;
-                // manip_m[i][6][j] = 0x0000000000000000ULL;
-                // manip_m[i][7][j] = 0x0000000000000000ULL;
+                std::cout << "\nmmj:\t" << mmj << "\tmmi:\t" << mmi;
+                mmj = (mmj+1)%8;
             }
+            if(mmj%7==0) mmi++;
         }
         
+        std::cout << std::endl << std::endl;
+        for(int i=0;i<m_ch/8;i++) {
+            for(int j=0;j<8;j++) {
+                for(int k=0;k<8;k++) std::cout << std::hex << manip_m[i][j][k];
+            }
+        }
         return manip_m;
     }
     
     void hash_kib512(uint64_t*** manip_m); // compression function
+    
+    template<typename T>
+    T hashstr(std::string input) {
+        // check if type of T is valid, then return hash
+        assert((typeid(T) != typeid(std::string) || typeid(T) !=
+                typeid(uint64_t*)) && "Kib512 hashstr:\t wrong type detected");
+        
+        // calculate hash
+        uint8_t **m = kib512_prep(input);
+        uint64_t ***manipm = prec_kib512(m);
+        hash_kib512(manipm);
+        
+        // return hash as requested data type
+        if(typeid(T) == typeid(std::string)) {
+            std::stringstream ss;
+            for(int i=0;i<8;i++) {
+                ss << std::setfill('0') << std::setw(16) << std::hex << hash[i];
+            }
+            return ss.str();
+        }
+        else {
+            return hash;
+        }
+    }
 };
 
 int main()
@@ -185,11 +185,6 @@ int main()
     uint8_t **m = kib512.kib512_prep(in);
     uint64_t ***manipm = kib512.prec_kib512(m);
     
-    for(int i=0;i<8;i++) {
-        for(int j=0;j<8;j++) {
-            // std::cout << std::hex << manipm[0][i][j] << " ";
-        }
-    }
     
     std::cout << "\n\n" << std::hex << in.length();
     for(int r=0;r<8;r++) {
