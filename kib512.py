@@ -3,7 +3,7 @@ import sys
 
 # 64-bit byteswap
 def bs64(x):
-    return np.uint64((x & np.uint64(0xff00000000000000)) >> np.uint64(56) | 
+    return np.uint64((x & np.uint64(0xff00000000000000)) >> np.uint64(56) |
                      (x & np.uint64(0x00ff000000000000)) >> np.uint64(40) |
                      (x & np.uint64(0x0000ff0000000000)) >> np.uint64(24) |
                      (x & np.uint64(0x000000ff00000000)) >> np.uint64(8)  |
@@ -46,16 +46,14 @@ class Kib512:
     
     
     """ pre-processing"""
-    # user input as np.uint8 matrix
-    
     def prep_kib512(self, inp):
         length = len(inp)
         padlen = (((512-((length*8)+1)-128) % 512)-7)//8
         
         # matrix column height
         self.matrix_colh = (padlen + length + 17)//8;
-        self.matrix = np.eye(8, self.matrix_colh)
         
+        self.matrix = np.eye(8, self.matrix_colh) # 2-d matrix
         inp+=str(0x90) # add delimeter after end of data
         inp+='0'*padlen # pad
         inp+=hex(length)[2:].zfill(16) # add length
@@ -63,7 +61,8 @@ class Kib512:
         
         for i in range(8):
             for j in range(self.matrix_colh):
-                self.matrix[i,j] = arr[j+i*8]
+                self.matrix[i,j] = arr[j+i*self.matrix_colh]
+        
         return self.matrix
     
     """ pre-compression """
