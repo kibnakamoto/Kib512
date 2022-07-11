@@ -117,7 +117,7 @@ class Kib512 {
         uint64_t mmi=0; // manipulation matrix i
         int mmj=0;  // manipulation matrix j
         for(int j=0;j<8;j++) {
-            for(int i=0;i<m_ch/8;i++) {
+            for(uint64_t i=0;i<m_ch/8;i++) {
                 uint64_t temp=0;
                 // add matrix values while avoiding repetition of values
                 for(int x=0;x<8;x++) {
@@ -125,22 +125,24 @@ class Kib512 {
                 }
                 
                 // data in matrix has to be big-endian
-                if constexpr(std::endian::native == std::endian::big) {
+                if constexpr(std::endian::native == std::endian::little) {
                     manip_m[mmi][0][mmj] = __builtin_bswap64(temp &
                                                              0xffffffffffffffffULL);
                 } else {
                     manip_m[mmi][0][mmj] = temp & 0xffffffffffffffffULL;
                 }
-                // std::cout << "\nmmj:\t" << mmj << "\tmmi:\t" << mmi;
+                std::cout << mmi << "\n";
                 mmj = (mmj+1)%8;
             }
-            if(mmj%7==0) mmi++;
+            if(mmj%8==0) mmi++;
         }
         
-        std::cout << std::endl << std::endl;
-        for(int i=0;i<m_ch/8;i++) {
-            for(int j=0;j<8;j++) {
-                for(int k=0;k<8;k++) std::cout << std::hex << manip_m[i][j][k] << " ";
+        // pre-compression. Get rid of extra padding
+        for(uint64_t i=0;i<m_ch/8;i++) {
+            for(int j=1;j<8;j++) {
+                for(int k=0;k<8;k++) {
+                    
+                }
             }
         }
         return manip_m;
