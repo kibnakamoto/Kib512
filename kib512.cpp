@@ -5,10 +5,10 @@
 #include <iomanip>
 #include <cmath>
 #include <bit>
-#include<assert.h>
+#include <assert.h>
 
 // IMPORTANT:
-// matrix variable is correct, the wrong method was used to access it.
+// both the 2-d and 3-d matrix are correct. only thing is that data is big endian.
 
 #if !defined(UINT8_MAX)
     using uint8_t = unsigned char
@@ -86,11 +86,11 @@ class Kib512 {
             }
         }
         
-        for(int r=0;r<8;r++) {
-            for(uint64_t c=0;c<m_ch;c++) {
-                std::cout << std::hex << matrix[r][c]+0;
-            }
-        }std::cout << std::endl;
+        // for(int r=0;r<8;r++) {
+        //     for(uint64_t c=0;c<m_ch;c++) {
+        //         std::cout << std::hex << matrix[r][c]+0;
+        //     }
+        // }std::cout << std::endl;
         
         return matrix;
     }
@@ -123,20 +123,15 @@ class Kib512 {
                 for(int x=0;x<8;x++) {
                     temp or_eq (uint64_t)matrix[j][x+i*8] << 56-x*8;
                 }
-                // std::cout << std::hex << temp << "";
-                
-                // NOTE: wrong method to add to 3-d matrix
-                // TODO: initialize manip_m in a different way without changing
-                //       loops
                 
                 // data in matrix has to be big-endian
-                if constexpr(std::endian::native == std::endian::little) {
+                if constexpr(std::endian::native == std::endian::big) {
                     manip_m[mmi][0][mmj] = __builtin_bswap64(temp &
                                                              0xffffffffffffffffULL);
                 } else {
                     manip_m[mmi][0][mmj] = temp & 0xffffffffffffffffULL;
                 }
-                std::cout << "\nmmj:\t" << mmj << "\tmmi:\t" << mmi;
+                // std::cout << "\nmmj:\t" << mmj << "\tmmi:\t" << mmi;
                 mmj = (mmj+1)%8;
             }
             if(mmj%7==0) mmi++;
@@ -145,7 +140,7 @@ class Kib512 {
         std::cout << std::endl << std::endl;
         for(int i=0;i<m_ch/8;i++) {
             for(int j=0;j<8;j++) {
-                for(int k=0;k<8;k++) std::cout << std::hex << manip_m[i][j][k];
+                for(int k=0;k<8;k++) std::cout << std::hex << manip_m[i][j][k] << " ";
             }
         }
         return manip_m;
