@@ -1,9 +1,19 @@
-import calc_consts_kib512 as consts
 import numpy as np
 import sys
 
+# 64-bit byteswap
+def bs64(x):
+    return np.uint64((x & np.uint64(0xff00000000000000)) >> np.uint64(56) | 
+                     (x & np.uint64(0x00ff000000000000)) >> np.uint64(40) |
+                     (x & np.uint64(0x0000ff0000000000)) >> np.uint64(24) |
+                     (x & np.uint64(0x000000ff00000000)) >> np.uint64(8)  |
+                     (x & np.uint64(0x00000000ff000000)) << np.uint64(8)  |
+                     (x & np.uint64(0x0000000000ff0000)) << np.uint64(24) |
+                     (x & np.uint64(0x000000000000ff00)) << np.uint64(40) |
+                     (x & np.uint64(0x00000000000000ff)) << np.uint64(56))
+
 class Kib512:
-    const_matrix = [
+    CONST_MATRIX = [
         [0x159a300c24f5dc1e, 0x178f1324ac498bfc, 0x10e55f6926814653,
          0x1963cf80d6276ccc,0x10980aa9695d807a, 0x1703f56bbe1f7f5e,
          0x16eb052c4abc81fe, 0x1f190bb16583b88f], [0x1d6d15eb483d1a05,
@@ -50,15 +60,16 @@ class Kib512:
         inp+='0'*padlen # pad
         inp+=hex(length)[2:].zfill(16) # add length
         arr = np.array(bytearray(inp.encode('utf-8')), dtype=np.uint8)
-        for i in range(0, 8):
-            for j in range(0, self.matrix_colh):
-                self.matrix[i,j] = arr[i+j*8]
+        
+        for i in range(8):
+            for j in range(self.matrix_colh):
+                self.matrix[i,j] = arr[j+i*8]
         return self.matrix
     
     """ pre-compression """
     def prec_kib512(self):
         self.block_count = self.matrix_colh//8
-        manip_m = np.zeros((self.block_count, 8, 8), dtype=np.uint64)
+        self.manip_m = np.zeros((self.block_count, 8, 8), dtype=np.uint64)
         
         mmi = np.uint64(0) # manipulation matrix i
         mmj = np.int32(0) # manipulation matrix j
@@ -70,19 +81,33 @@ class Kib512:
                 for k in range(8):
                     temp |= np.uint64(self.matrix[i,k+j*8]) << np.uint64(56-k*8)
                 
+                print(hex(temp)[2:])
                 # data in 3-d matrix has to be big-endian
                 if(sys.byteorder[0] == 'l'):
-                    manip_m[mmi,0,mmj] = np.uint64(temp & 0xffffffffffffffff)
+                    self.manip_m[mmi,0,mmj] = np.uint64(bs64(temp & 0xffffffffffffffff))
                 else:
-                    manip_m[mmi,0,mmj] = np.uint64(temp)
-                mmj = (mmj+1)%8
-            mmi+=1 if mmj%8==0 else mmi
-            
-        return None
+                    self.manip_m[mmi,0,mmj] = np.uint64(temp & 0xffffffffffffffff)
+                mmj = np.int32((mmj+1)%8)
+                
+            if mmj%8==0:
+                mmi+=np.uint64(1)
+        
+        for i in range(self.block_count):
+            for j in range(0,1):
+                for k in range(8):
+                    pass
+                    # print(hex(manip_m[i,j,k])[2:])
+        
+        return self.manip_m
     
     """ compression function """
+    def comp_kib512(self):
+        pass
     
-inp = "abcd"
+    def __call__(self):
+        pass
+
+inp = "abcdefghqwertyuioplkjhgfdsazxcvbnm1234567890!@#$%^&*()\\/"
 kib512 = Kib512()
 kib512.prep_kib512(inp)
 kib512.prec_kib512()
