@@ -54,10 +54,14 @@ class Kib512:
         self.matrix_colh = (padlen + length + 17)//8;
         
         self.matrix = np.eye(8, self.matrix_colh) # 2-d matrix
-        inp+=str(0x90) # add delimeter after end of data
+        inp+=chr(0x90) # add delimeter after end of data
         inp+='0'*padlen # pad
         inp+=hex(length)[2:].zfill(16) # add length
-        arr = np.array(bytearray(inp.encode('utf-8')), dtype=np.uint8)
+        arr = np.array(bytearray(inp.encode('charmap')), dtype=np.uint8)
+        
+        for i in arr:
+            print(hex(i)[2:], "",end='');
+        print()
         
         for i in range(8):
             for j in range(self.matrix_colh):
