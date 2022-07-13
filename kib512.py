@@ -12,6 +12,21 @@ def bs64(x):
                      (x & np.uint64(0x000000000000ff00)) << np.uint64(40) |
                      (x & np.uint64(0x00000000000000ff)) << np.uint64(56))
 
+# compression idea: use right rotate and left rotate unieqly so that values that
+# are changed do not interfere(the same bit shouldn't be both right rotated
+# and left rotated) since that will keep data uncompressed. Instead of
+# brute forcing, first generate the values I want to rotate and shift with.
+# by using sense and a different program. Find a way to give matrix value even
+# if data is equal to zero. Insert a backdoor if possible... 
+
+# unsigned 64-bit bitwise right-rotate
+def rr(x: np.uint64(), n: int):
+    return (x >> n)|(x << (64-n)) & 0xffffffffffffffff
+
+# unsigned 64-bit bitwise left-rotate
+def lr(x: np.uint64(), n: int):
+    return (x << n)|(x >> (64-n)) & 0xffffffffffffffff
+
 class Kib512:
     CONST_MATRIX = [
         [0x159a300c24f5dc1e, 0x178f1324ac498bfc, 0x10e55f6926814653,
@@ -38,11 +53,11 @@ class Kib512:
          0x277c0323eb636b90]
     ]
     
-    _hash_ = [
+    hash_ = {
         0x5287173768046659, 0x1388c1a81885db29, 0xc582055c7b0f1a24,
         0x9be22d058c2ae082, 0xa36b2344c3b2e0d0, 0x8b74c2c08074d4b1,
         0x2a1c87eb1011bd80, 0x64edcba54a4d0a5a
-    ]
+    }
     
     
     """ pre-processing"""
@@ -58,11 +73,6 @@ class Kib512:
         inp+='0'*padlen # pad
         inp+=hex(length)[2:].zfill(16) # add length
         arr = np.array(bytearray(inp.encode('charmap')), dtype=np.uint8)
-        
-        for i in arr:
-            print(hex(i)[2:], "",end='');
-        print()
-        
         for i in range(8):
             for j in range(self.matrix_colh):
                 self.matrix[i,j] = arr[j+i*self.matrix_colh]
@@ -96,10 +106,22 @@ class Kib512:
                 mmi+=np.uint64(1)
         
         for i in range(self.block_count):
-            for j in range(0,1):
+            for j in range(1,8):
                 for k in range(8):
+                    # get the first values from the 2d matrix as the value to generate
+                    # the row values if you consider that this matrix has stacked
+                    # rows and colums. Test until values seem like they have zero
+                    # patters and seem completely random
+                    
+                    # values that is used to generate rest of the matrix
+                    temp = self.manip_m[i,j-1,k]
+                    self.manip_m[i,j,k]
+
+        for i in range(self.block_count):
+            for j in range(1,8):
+                for k in range(8):
+                    # print(hex(self.manip_m[i,j,k])[2:])
                     pass
-                    # print(hex(manip_m[i,j,k])[2:])
         
         return self.manip_m
     
