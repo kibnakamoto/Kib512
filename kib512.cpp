@@ -1,14 +1,15 @@
 #include <iostream>
 #include <stdint.h>
+#include <cmath>
+#include <bitset>
 #include <string>
 #include <sstream>
 #include <iomanip>
-#include <cmath>
 #include <bit>
 #include <assert.h>
 
-// IMPORTANT:
-// both the 2-d and 3-d matrix are correct. only thing is that data is big endian.
+// use little-endian since it is the most common and will lead to less
+// conversions making it more efficient
 
 #if !defined(UINT8_MAX)
     using uint8_t = unsigned char
@@ -17,6 +18,18 @@
 #elif !defined(UINT64_MAX)
     using uint64_t = unsigned long long
 #endif
+
+inline uint64_t rr(uint64_t x, unsigned int n) {
+    return (x >> n)|(x << ((sizeof(x)<<3)-n));
+}
+
+inline uint64_t lr(uint64_t x, unsigned int n) {
+    return (x << n)|(x >> ((sizeof(x)<<3)-n));
+}
+
+inline std::string bin(uint64_t x) {
+    return std::bitset<64>(x).to_string();
+}
 
 // pre-processing of kib512
 class Kib512 {
@@ -124,14 +137,13 @@ class Kib512 {
                     temp or_eq (uint64_t)matrix[j][x+i*8] << 56-x*8;
                 }
                 
-                // data in matrix has to be big-endian
-                if constexpr(std::endian::native == std::endian::little) {
+                // data in matrix has to be little-endian
+                if constexpr(std::endian::native == std::endian::big) {
                     manip_m[mmi][0][mmj] = __builtin_bswap64(temp &
                                                              0xffffffffffffffffULL);
                 } else {
                     manip_m[mmi][0][mmj] = temp & 0xffffffffffffffffULL;
                 }
-                std::cout << mmi << "\n";
                 mmj = (mmj+1)%8;
             }
             if(mmj%8==0) mmi++;
@@ -141,7 +153,19 @@ class Kib512 {
         for(uint64_t i=0;i<m_ch/8;i++) {
             for(int j=1;j<8;j++) {
                 for(int k=0;k<8;k++) {
+                    // primes used for rotation and shifting
+                    unsigned int p[4] = {37, 3, 59, 5};
                     
+                    uint64_t sigma0 = rr(tn1, p[0]) xor lr(tn2, p[1]) xor (tn3 << p[2]) xor
+                                      (tn4 << p[3]) & 0xffffffffffffffffULL;
+                    uint64_t sigma1 = rr(tn4, p[3]) xor lr(tn1, p[0]) xor (tn2 << p[1]) xor
+                                      (tn3 << p[2]) & 0xffffffffffffffffULL;
+                    uint64_t sigma2 = rr(tn3, p[2]) xor lr(tn4, p[3]) xor (tn1 << p[0]) xor
+                                      (tn2 >> p[1]) & 0xffffffffffffffffULL;
+                    uint64_t sigma3 = rr(tn2, p[1]) xor lr(tn3, p[2]) xor (tn4 << p[3]) xor
+                                      (tn1 >> p[0]) & 0xffffffffffffffffULL;
+                    manip_m[i][j][k] = (sigma0 + sigma1 + sigma2 + sigma3) &
+                                       0xffffffffffffffffULL;
                 }
             }
         }
@@ -175,19 +199,55 @@ class Kib512 {
     }
 };
 
-int main()
-{
+/*
+     0x1e2c7d2c722534b7ULL, 0x14dcbefdb2afe52dULL, 0xf5fbc705a80df745ULL,
+         0xe1803d026daf382fULL, 0x4817a3bcb90fa1deULL, 0x3b8d9167a61165bdULL,
+         0x400b71315483aecfULL}, {0x7e253caa1049536cULL, 0x7143a810657de4e0ULL,
+         0xba3d16917c91aae3ULL, 0x249b4da86d970a00ULL, 0x290ffdedae0a1c66ULL,
+         0x8d490ccfccd45ebbULL, 0x1852f3c77fae1cb7ULL, 0x8f078d043c3be329ULL},
+        {0x568d492cc5140ae4ULL, 0x1cd5bbf83190c484ULL, 0x99d177432a40d119ULL,
+         0x1f21998dc8c9145eULL, 0x560d95c1d691bf3fULL, 0x57131d9cde1633e5ULL,
+         0xcccd035627a53b51ULL, 0x13d653d8c3ae0192ULL}, {0x5d1e80c0123206a1ULL,
+         0x91b1b3f312ac1be8ULL, 0x19bc3eed09a866a2ULL, 0x29ed711bc0303fb1ULL,
+         0x35fa6009ed810bd6ULL, 0x69a90fb1b95d63aeULL, 0x38bedd43ad759c34ULL,
+         0xa787e2edc8133e84ULL}
+*/
+
+int main() {
     Kib512 kib512 = Kib512();
+    
+    // try: 11th prime number(37),
+    // try: 1st prime number(3),
+    // try: 16th prime number(59)
+    // try: try 2nd prime number(5)
+    
+    // std::cout << std::hex << final << std::endl;
+    // std::cout << std::hex << bin(finalA) << std::endl;
+    // std::cout << std::hex << bin(finalB) << std::endl;
+    // std::cout << std::hex << bin(finalC) << std::endl;
+    // std::cout << std::hex << bin(finalD) << std::endl << std::endl;
+
+    // std::cout << std::hex << bin(tn1) << std::endl;
+    // std::cout << std::hex << bin(tn2) << std::endl;
+    // std::cout << std::hex << bin(tn3) << std::endl;
+    
     std::string in = "abcdefghqwertyuioplkjhgfdsazxcvbnm1234567890!@#$\%^&*()\\/";
     uint8_t **m = kib512.kib512_prep(in);
     uint64_t ***manipm = kib512.prec_kib512(m);
     
-    
-    std::cout << "\n\n" << std::hex << in.length();
-    for(int r=0;r<8;r++) {
-        for(int c=0;c<8;c++) {
-            // std::cout << m[r][c];
+    for(int i=0;i<2;i++) {
+        for(int j=0;j<8;j++) {
+            for(int k=0;k<8;k++) {
+                std::cout << std::setfill('0') << std::setw(16) << std::hex
+                          << manipm[i][j][k] << "\t";
+            }
         }
     }
+    std::cout << "\n\n" << std::hex << in.length();
+    
     return 0;
+
 }
+
+
+// CHANGE ENDIANNES TO LITTLE IN PY
