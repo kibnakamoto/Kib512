@@ -153,15 +153,15 @@ class Kib512 {
         // pre-compression. Get rid of extra padding
         for(uint64_t i=0;i<m_ch/8;i++) {
             for(int j=1;j<8;j++) {
-                int n = 4;
+                int n = 0;
                 for(int k=0;k<8;k++) {
                     // primes used for rotation and shifting
                     unsigned int p[4] = {37, 3, 59, 5};
-                    uint64_t tn1,tn2,tn3,tn4 = manip_m[i][j-1][n-4];
-                    tn3 = manip_m[i][j-1][n-3];
-                    tn2 = manip_m[i][j-1][n-2];
-                    tn1 = manip_m[i][j-1][n-1];
-                    
+                    uint64_t tn1,tn2,tn3,tn4 = manip_m[i][j-1][n*2+4];
+                    tn3 = manip_m[i][j-1][n*2+3];
+                    tn2 = manip_m[i][j-1][n*2+2];
+                    tn1 = manip_m[i][j-1][n*2+1];
+                    std::cout << n*4-4 << "\n";
                     // try only using sigma0 and sigma1 for half rotation and
                     // more efficient version if it still seems secure
                     
@@ -175,7 +175,7 @@ class Kib512 {
                                       (tn1 >> p[0]) & 0xffffffffffffffffULL;
                     manip_m[i][j][k] = (sigma0 + sigma1 + sigma2 + sigma3) &
                                        0xffffffffffffffffULL;
-                    n++;
+                    n = (n+1)%8;
                 }
             }
         }
