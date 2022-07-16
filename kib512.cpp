@@ -34,10 +34,9 @@ inline std::string bin(uint64_t x) {
 
 // pre-processing of kib512
 class Kib512 {
-    private:
-    uint64_t m_ch;
     
     public:
+    uint64_t m_ch;
     static constexpr uint64_t const const_m[8][8] = {
         {0x159a300c24f5dc1eULL, 0x178f1324ac498bfcULL, 0x10e55f6926814653ULL,
          0x1963cf80d6276cccULL,0x10980aa9695d807aULL, 0x1703f56bbe1f7f5eULL,
@@ -153,29 +152,37 @@ class Kib512 {
         // pre-compression. Get rid of extra padding
         for(uint64_t i=0;i<m_ch/8;i++) {
             for(int j=1;j<8;j++) {
-                int n = 0;
                 for(int k=0;k<8;k++) {
                     // primes used for rotation and shifting
+                    // chosen so that one big, one small one rotation is made each time
                     unsigned int p[4] = {37, 3, 59, 5};
-                    uint64_t tn1,tn2,tn3,tn4 = manip_m[i][j-1][n*2+4];
-                    tn3 = manip_m[i][j-1][n*2+3];
-                    tn2 = manip_m[i][j-1][n*2+2];
-                    tn1 = manip_m[i][j-1][n*2+1];
-                    std::cout << n*4-4 << "\n";
-                    // try only using sigma0 and sigma1 for half rotation and
-                    // more efficient version if it still seems secure
                     
-                    uint64_t sigma0 = rr(tn1, p[0]) xor lr(tn2, p[1]) xor (tn3 << p[2]) xor
+                    // matrix indexes are chosen within reason, +7,+6 is for
+                    // length of matrix and +1 and +0 is for start of the message.
+                    
+                    uint64_t tn1,tn2,tn3,tn4 = manip_m[(i+m_ch/8)%m_ch/8][j-1][(k+7)%8];
+                    tn3 = manip_m[(i+m_ch/8)%m_ch/8][j-1][(k+6)%8];
+                    tn2 = manip_m[i][j-1][(k+1)%8];
+                    tn1 = manip_m[i][j-1][k];
+                    
+                    if(j < 2)
+                        std::cout << (k+7)%8 << " " << (k+6)%8 << " " << (k+1)%8
+                                  << " " << k%8 << "\n";
+                    // TODO: try only using sigma0 and sigma1 for half rotation
+                    // and more efficient version if it still seems secure
+                    
+                    uint64_t sigma0 = rr(tn1, p[0]) xor lr(tn2, p[1]) xor (tn3 << p[2]) |
                                       (tn4 << p[3]) & 0xffffffffffffffffULL;
-                    uint64_t sigma1 = rr(tn4, p[3]) xor lr(tn1, p[0]) xor (tn2 << p[1]) xor
+                    uint64_t sigma1 = rr(tn4, p[3]) xor lr(tn1, p[0]) xor (tn2 << p[1]) |
                                       (tn3 << p[2]) & 0xffffffffffffffffULL;
-                    uint64_t sigma2 = rr(tn3, p[2]) xor lr(tn4, p[3]) xor (tn1 << p[0]) xor
-                                      (tn2 >> p[1]) & 0xffffffffffffffffULL;
-                    uint64_t sigma3 = rr(tn2, p[1]) xor lr(tn3, p[2]) xor (tn4 << p[3]) xor
-                                      (tn1 >> p[0]) & 0xffffffffffffffffULL;
+                    uint64_t sigma2 = rr(tn3, p[2]) xor lr(tn4, p[3]) xor (tn1 << p[0]) |
+                                      (tn2 << p[1]) & 0xffffffffffffffffULL;
+                    uint64_t sigma3 = rr(tn2, p[1]) xor lr(tn3, p[2]) xor (tn4 << p[3]) |
+                                      (tn1 << p[0]) & 0xffffffffffffffffULL;
+                    
+                    // add for non-linearity
                     manip_m[i][j][k] = (sigma0 + sigma1 + sigma2 + sigma3) &
                                        0xffffffffffffffffULL;
-                    n = (n+1)%8;
                 }
             }
         }
@@ -216,12 +223,13 @@ int main() {
     // try: 1st prime number(3),
     // try: 16th prime number(59)
     // try: try 2nd prime number(5)
-        
+    
     std::string in = "abcdefghqwertyuioplkjhgfdsazxcvbnm1234567890!@#$\%^&*()\\/";
+    // std::string in = "abc";
     uint8_t **m = kib512.kib512_prep(in);
     uint64_t ***manipm = kib512.prec_kib512(m);
     
-    for(int i=0;i<2;i++) {
+    for(int i=0;i<kib512.m_ch/8;i++) {
         for(int j=0;j<8;j++) {
             for(int k=0;k<8;k++) {
                 std::cout << std::setfill('0') << std::setw(16) << std::hex
@@ -230,18 +238,7 @@ int main() {
         }
     }
     std::cout << "\n\n" << std::hex << in.length();
-    
-    // std::cout << std::hex << final << std::endl;
-    // std::cout << std::hex << bin(finalA) << std::endl;
-    // std::cout << std::hex << bin(finalB) << std::endl;
-    // std::cout << std::hex << bin(finalC) << std::endl;
-    // std::cout << std::hex << bin(finalD) << std::endl << std::endl;
-
-    // std::cout << std::hex << bin(tn1) << std::endl;
-    // std::cout << std::hex << bin(tn2) << std::endl;
-    // std::cout << std::hex << bin(tn3) << std::endl;
     return 0;
-
 }
 
 
