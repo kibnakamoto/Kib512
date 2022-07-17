@@ -183,8 +183,7 @@ class Kib512 {
                                       (tn1 << p[0]) & 0xffffffffffffffffULL;
                     
                     // use arithmetic addition for non-linearity
-                    manip_m[i][j][k] = (sigma0 + sigma1 + sigma2 + sigma3 +
-                                        manip_m[(i+m_ch/8)%m_ch/8][j-1][(k+7%8)]) &
+                    manip_m[i][j][k] = (sigma0 + sigma1 + sigma2 + sigma3)*p[k%4] &
                                        0xffffffffffffffffULL;
                     
                     // the value in after sigma3 is added for better diffusion
@@ -230,8 +229,8 @@ int main() {
     // try: 16th prime number(59)
     // try: try 2nd prime number(5)
     
-    // std::string in = "abcdefghqwertyuioplkjhgfdsazxcvbnm1234567890!@#$\%^&*()\\/";
-    std::string in = "abc";
+    std::string in = "abcdefghqwertyuioplkjhgfdsazxcvbnm1234567890!@#$%^&*()\\/";
+    // std::string in = "abc";
     uint8_t **m = kib512.kib512_prep(in);
     uint64_t ***manipm = kib512.prec_kib512(m);
     
