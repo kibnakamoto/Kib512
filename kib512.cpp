@@ -12,6 +12,8 @@
 // conversions making it more efficient
 // try padding with ones instead of zeros for the manip_m matrix or with 0x3030303030303030ULL
 
+// algorithm supports proper diffusion
+
 #if !defined(UINT8_MAX)
     using uint8_t = unsigned char
 #elif !defined(UINT32_MAX)
@@ -180,9 +182,13 @@ class Kib512 {
                     uint64_t sigma3 = rr(tn2, p[1]) xor lr(tn3, p[2]) xor (tn4 << p[3]) |
                                       (tn1 << p[0]) & 0xffffffffffffffffULL;
                     
-                    // add for non-linearity
-                    manip_m[i][j][k] = (sigma0 + sigma1 + sigma2 + sigma3) &
+                    // use arithmetic addition for non-linearity
+                    manip_m[i][j][k] = (sigma0 + sigma1 + sigma2 + sigma3 +
+                                        manip_m[(i+m_ch/8)%m_ch/8][j-1][(k+7%8)]) &
                                        0xffffffffffffffffULL;
+                    
+                    // the value in after sigma3 is added for better diffusion
+                    // and to get rid of repeating values
                 }
             }
         }
@@ -224,8 +230,8 @@ int main() {
     // try: 16th prime number(59)
     // try: try 2nd prime number(5)
     
-    std::string in = "abcdefghqwertyuioplkjhgfdsazxcvbnm1234567890!@#$\%^&*()\\/";
-    // std::string in = "abc";
+    // std::string in = "abcdefghqwertyuioplkjhgfdsazxcvbnm1234567890!@#$\%^&*()\\/";
+    std::string in = "abc";
     uint8_t **m = kib512.kib512_prep(in);
     uint64_t ***manipm = kib512.prec_kib512(m);
     
