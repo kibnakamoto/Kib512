@@ -22,17 +22,37 @@
     using uint64_t = unsigned long long
 #endif
 
-inline uint64_t rr(uint64_t x, unsigned int n) {
-    return (x >> n)|(x << ((sizeof(x)<<3)-n));
+// Taha Canturk Kibnakamoto 64-bit Koblitz curve with prime field size
+struct tckp64k1 {
+    const uint64_t a = 0x0000000000000000ULL; // taken from SEC curves domain parameters
+    const uint64_t b = 0x0000000000000007ULL; // taken from SEC curves domain parameters
+    
+    // generated without the use of SEC specifications on how to generate p and q
+    // since that is generated randomly, there isn't a need to
+    const uint64_t p = 0xffffffffffffffc5ULL; // largest unsigned 64-bit prime number
+    
+    // calculated with sagemath
+    const __uint128_t n = 0x100000001dc431000; // bigger than field size
+    
+    // calculated with sagemath
+    const uint64_t gx = 0x7143332d09966ea9ULL; // x coordinate of generator point
+    const uint64_t gy = 0xb5fbd04e6e22f933ULL; // y coordinate of generator point
+    const uint64_t h =  0x0000000000000001ULL; // co-factor
+};
+
+// bitwise right-rotate
+inline uint64_t rr(uint64_t x, unsigned int n) { return (x >> n)|(x << (64-n)); }
+
+// bitwise left-rotate
+inline uint64_t lr(uint64_t x, unsigned int n) { return (x << n)|(x >> (64-n)); }
+
+// convert to bit string
+inline std::string bin(uint64_t x) { return std::bitset<64>(x).to_string(); }
+
+uint64_t gfmul(uint64_t a, uint64_t b, uint64_t p) {
+    
 }
 
-inline uint64_t lr(uint64_t x, unsigned int n) {
-    return (x << n)|(x >> ((sizeof(x)<<3)-n));
-}
-
-inline std::string bin(uint64_t x) {
-    return std::bitset<64>(x).to_string();
-}
 
 // pre-processing of kib512
 class Kib512 {
