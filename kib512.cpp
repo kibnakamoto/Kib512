@@ -139,13 +139,7 @@ class Kib512 {
                     temp or_eq (uint64_t)matrix[j][x+i*8] << 56-x*8;
                 }
                 
-                // data in matrix has to be little-endian
-                if constexpr(std::endian::native == std::endian::big) {
-                    manip_m[mmi][0][mmj] = __builtin_bswap64(temp &
-                                                             0xffffffffffffffffULL);
-                } else {
                     manip_m[mmi][0][mmj] = temp & 0xffffffffffffffffULL;
-                }
                 mmj = (mmj+1)%8;
             }
             if(mmj%8==0) mmi++;
@@ -170,8 +164,6 @@ class Kib512 {
                     if(j < 2)
                         std::cout << (k+7)%8 << " " << (k+6)%8 << " " << (k+1)%8
                                   << " " << k%8 << "\n";
-                    // TODO: try only using sigma0 and sigma1 for half rotation
-                    // and more efficient version if it still seems secure
                     
                     uint64_t sigma0 = rr(tn1, p[0]) xor lr(tn2, p[1]) xor (tn3 << p[2]) |
                                       (tn4 << p[3]) & 0xffffffffffffffffULL;
@@ -183,7 +175,7 @@ class Kib512 {
                                       (tn1 << p[0]) & 0xffffffffffffffffULL;
                     
                     // use arithmetic addition for non-linearity
-                    manip_m[i][j][k] = (sigma0 + sigma1 + sigma2 + sigma3)*p[k%4] &
+                    manip_m[i][j][k] = (sigma0*p[k%4] + sigma1 + sigma2 + sigma3) &
                                        0xffffffffffffffffULL;
                     
                     // the value in after sigma3 is added for better diffusion
@@ -194,7 +186,12 @@ class Kib512 {
         return manip_m;
     }
     
-    void hash_kib512(uint64_t*** manip_m); // compression function
+    void hash_kib512(uint64_t*** manip_m)
+    {
+        // largest unsigned 64-bit prime number
+        uint64_t l_prime = 0xffffffffffffffc5; // field size of weierstrass curve?
+        
+    } // compression function
     
     template<typename T>
     T hashstr(std::string input) {
@@ -245,6 +242,3 @@ int main() {
     std::cout << "\n\n" << std::hex << in.length();
     return 0;
 }
-
-
-// CHANGE ENDIANNES TO LITTLE IN PY
