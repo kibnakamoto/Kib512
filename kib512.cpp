@@ -70,6 +70,11 @@ class Kib512 {
         0x2a1c87eb1011bd80ULL, 0x64edcba54a4d0a5aULL
     };
     
+    // galois field size
+    // verified as prime using Fermat's Little Theorem in GF(gf_p) where gf_p
+    // denotes the potential largest unsigned 64-bit prime number
+    uint64_t gf_p = 0xffffffffffffffc5ULL; // largest unsigned 64-bit prime number
+    
     uint8_t** kib512_prep(std::string input)
     {
         uint8_t** matrix = nullptr;
@@ -110,17 +115,21 @@ class Kib512 {
         return matrix;
     }
     
+    // amount of blocks to be processed
+    uint64_t b_size;
+    
     uint64_t ***prec_kib512(uint8_t **matrix)
     {
-        // for compression have 
+        b_size = m_ch/8;
+        
         // initialize manipulation matrix with input matrix
         uint64_t ***manip_m = nullptr;
-        manip_m = new uint64_t **[m_ch/8];
+        manip_m = new uint64_t **[b_size];
         uint64_t loop_count = 0;
         
         // initialize 3-d matrix to zero to indexes that won't be initialized to
         // values of 2-d matrix
-        for(int i=0;i<m_ch/8;i++) {
+        for(int i=0;i<b_size;i++) {
             manip_m[i] = new uint64_t *[8];
             manip_m[i][0] = new uint64_t[8];
             for(int j=1;j<8;j++) { // to avoid unnecesary padding, j=1
@@ -132,21 +141,21 @@ class Kib512 {
         uint64_t mmi=0; // manipulation matrix i
         int mmj=0;  // manipulation matrix j
         for(int j=0;j<8;j++) {
-            for(uint64_t i=0;i<m_ch/8;i++) {
+            for(uint64_t i=0;i<b_size;i++) {
                 uint64_t temp=0;
                 // add matrix values while avoiding repetition of values
                 for(int x=0;x<8;x++) {
                     temp or_eq (uint64_t)matrix[j][x+i*8] << 56-x*8;
                 }
                 
-                    manip_m[mmi][0][mmj] = temp & 0xffffffffffffffffULL;
+                    manip_m[mmi][0][mmj] = temp % gf_p;
                 mmj = (mmj+1)%8;
             }
             if(mmj%8==0) mmi++;
         }
         
         // pre-compression. Get rid of extra padding
-        for(uint64_t i=0;i<m_ch/8;i++) {
+        for(uint64_t i=0;i<b_size;i++) {
             for(int j=1;j<8;j++) {
                 for(int k=0;k<8;k++) {
                     // primes used for rotation and shifting
@@ -156,42 +165,34 @@ class Kib512 {
                     // matrix indexes are chosen within reason, +7,+6 is for
                     // length of matrix and +1 and +0 is for start of the message.
                     
-                    uint64_t tn1,tn2,tn3,tn4 = manip_m[(i+m_ch/8)%m_ch/8][j-1][(k+7)%8];
-                    tn3 = manip_m[(i+m_ch/8)%m_ch/8][j-1][(k+6)%8];
+                    uint64_t tn1,tn2,tn3,tn4 = manip_m[(i+b_size)%b_size][j-1][(k+7)%8];
+                    tn3 = manip_m[(i+b_size)%b_size][j-1][(k+6)%8];
                     tn2 = manip_m[i][j-1][(k+1)%8];
                     tn1 = manip_m[i][j-1][k];
                     
-                    if(j < 2)
-                        std::cout << (k+7)%8 << " " << (k+6)%8 << " " << (k+1)%8
-                                  << " " << k%8 << "\n";
-                    
-                    uint64_t sigma0 = rr(tn1, p[0]) xor lr(tn2, p[1]) xor (tn3 << p[2]) |
-                                      (tn4 << p[3]) & 0xffffffffffffffffULL;
+                    uint64_t sigma0 = rr(tn1, p[0]) xor rr(tn2, p[1]) xor (tn3 << p[2]) |
+                                      (tn4 << p[3]) % gf_p;
                     uint64_t sigma1 = rr(tn4, p[3]) xor lr(tn1, p[0]) xor (tn2 << p[1]) |
-                                      (tn3 << p[2]) & 0xffffffffffffffffULL;
+                                      (tn3 << p[2]) % gf_p;
                     uint64_t sigma2 = rr(tn3, p[2]) xor lr(tn4, p[3]) xor (tn1 << p[0]) |
-                                      (tn2 << p[1]) & 0xffffffffffffffffULL;
+                                      (tn2 << p[1]) % gf_p;
                     uint64_t sigma3 = rr(tn2, p[1]) xor lr(tn3, p[2]) xor (tn4 << p[3]) |
-                                      (tn1 << p[0]) & 0xffffffffffffffffULL;
+                                      (tn1 << p[0]) % gf_p;
                     
                     // use arithmetic addition for non-linearity
-                    manip_m[i][j][k] = (sigma0*p[k%4] + sigma1 + sigma2 + sigma3) &
-                                       0xffffffffffffffffULL;
-                    
-                    // the value in after sigma3 is added for better diffusion
-                    // and to get rid of repeating values
+                    manip_m[i][j][k] = (sigma0/p[k%4] +
+                                        sigma1 + sigma2 + sigma3) % gf_p;
                 }
             }
         }
         return manip_m;
     }
     
+    // compression function
     void hash_kib512(uint64_t*** manip_m)
     {
-        // largest unsigned 64-bit prime number
-        uint64_t l_prime = 0xffffffffffffffc5; // field size of weierstrass curve?
         
-    } // compression function
+    }
     
     template<typename T>
     T hashstr(std::string input) {
@@ -219,19 +220,16 @@ class Kib512 {
 };
 
 int main() {
+    // assert that double is 64-bits
+    assert(std::numeric_limits<long double>::is_iec559);
+    
     Kib512 kib512 = Kib512();
-    
-    // try: 11th prime number(37),
-    // try: 1st prime number(3),
-    // try: 16th prime number(59)
-    // try: try 2nd prime number(5)
-    
-    std::string in = "abcdefghqwertyuioplkjhgfdsazxcvbnm1234567890!@#$%^&*()\\/";
-    // std::string in = "abc";
+    // std::string in = "abcdefghqwertyuioplkjhgfdsazxcvbnm1234567890!@#$%^&*()\\/";
+    std::string in = "abc";
     uint8_t **m = kib512.kib512_prep(in);
     uint64_t ***manipm = kib512.prec_kib512(m);
     
-    for(int i=0;i<kib512.m_ch/8;i++) {
+    for(int i=0;i<kib512.b_size;i++) {
         for(int j=0;j<8;j++) {
             for(int k=0;k<8;k++) {
                 std::cout << std::setfill('0') << std::setw(16) << std::hex
