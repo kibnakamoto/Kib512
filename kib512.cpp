@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <bit>
 #include <assert.h>
+#include <vector>
 
 // use little-endian since it is the most common and will lead to less
 // conversions making it more efficient
@@ -15,30 +16,93 @@
 // algorithm supports proper diffusion
 
 #if !defined(UINT8_MAX)
-    using uint8_t = unsigned char
-#elif !defined(UINT32_MAX)
-    using uint32_t = unsigned int
-#elif !defined(UINT64_MAX)
-    using uint64_t = unsigned long long
+using uint8_t = unsigned char
 #endif
 
+#if !defined(UINT32_MAX)
+using uint32_t = unsigned int
+#endif
+
+#if !defined(UINT64_MAX)
+using uint64_t = unsigned long long
+#endif
+
+using point_t = std::pair<uint64_t,uint64_t>;
+
 // Taha Canturk Kibnakamoto 64-bit Koblitz curve with prime field size
-struct tckp64k1 {
+struct Tckp64k1
+{
     const uint64_t a = 0x0000000000000000ULL; // taken from SEC curves domain parameters
     const uint64_t b = 0x0000000000000007ULL; // taken from SEC curves domain parameters
     
     // generated without the use of SEC specifications on how to generate p and q
     // since that is generated randomly, there isn't a need to
+    // verified as prime using Fermat's Little Theorem in GF(gf_p) where gf_p
+    // denotes the potential largest unsigned 64-bit prime number
     const uint64_t p = 0xffffffffffffffc5ULL; // largest unsigned 64-bit prime number
     
     // calculated with sagemath
-    const __uint128_t n = 0x100000001dc431000; // bigger than field size
+    // __uint128_t n = 0x100000001dc431000; // bigger than field size
     
     // calculated with sagemath
     const uint64_t gx = 0x7143332d09966ea9ULL; // x coordinate of generator point
     const uint64_t gy = 0xb5fbd04e6e22f933ULL; // y coordinate of generator point
-    const uint64_t h =  0x0000000000000001ULL; // co-factor
+    const uint64_t h = 0x0000000000000001ULL; // co-factor
 };
+
+inline uint64_t extended_gcd(uint64_t a, uint64_t b, uint64_t &x)
+{
+    x = 1;
+    uint64_t y = 0;
+    if (0 == b) return a;
+    uint64_t n_x = 0;
+    uint64_t n_y = 1;
+    uint64_t n_r = b;
+    uint64_t r = a;
+    uint64_t quot, tmp;
+    while (n_r) {
+        quot = r / n_r;
+        tmp = r;
+        r = n_r;
+        n_r = tmp - quot * n_r;
+        tmp = x;
+        x = n_x;
+        n_x = tmp - quot * n_x;
+        tmp = y;
+        y = n_y;
+        n_y = tmp - quot * n_y;
+    }
+    return r;
+}
+
+inline uint64_t mod_inv(uint64_t a, uint64_t p) {
+    uint64_t x;
+    uint64_t gcd = extended_gcd(a,p,x);
+    if (gcd != 1) {
+        std::cout << std::flush << "gcd isn't one\n";
+    }
+    return (x%p + p) % p;
+}
+
+inline uint64_t inv_mod(uint64_t x, uint64_t p) {
+    return NULL;
+}
+
+inline point_t point_add(point_t p1, point_t p2, uint64_t p, uint64_t a)
+{
+    uint64_t __lambda;
+    
+    // equation for private key and pointG
+    // find lambda
+    if (std::get(1)(p1) == p2[1] or p1[0] == p2[0]) {
+        __lambda = ((3*(p1[0]*p1[0]) + a)*mod_inv(2*p1[1], p)) % p;
+    } else {
+        __lambda = ((p2[1]-p1[1])*mod_inv(p2[0]-p1[0], p)) % p;
+    }
+    uint64_t xr = (__lambda*__lambda - p1[0] - p2[0]) % p;
+    uint64_t yr = (__lambda*(p1[0]-xr) - p1[1]) % p;
+    return (xr%p, yr%p);
+}
 
 // bitwise right-rotate
 inline uint64_t rr(uint64_t x, unsigned int n) { return (x >> n)|(x << (64-n)); }
@@ -49,13 +113,10 @@ inline uint64_t lr(uint64_t x, unsigned int n) { return (x << n)|(x >> (64-n)); 
 // convert to bit string
 inline std::string bin(uint64_t x) { return std::bitset<64>(x).to_string(); }
 
-uint64_t gfmul(uint64_t a, uint64_t b, uint64_t p) {
-    
-}
-
-
 // pre-processing of kib512
 class Kib512 {
+    private:
+        Tckp64k1 curve; // curve domain parameters
     
     public:
     uint64_t m_ch;
@@ -91,9 +152,7 @@ class Kib512 {
     };
     
     // galois field size
-    // verified as prime using Fermat's Little Theorem in GF(gf_p) where gf_p
-    // denotes the potential largest unsigned 64-bit prime number
-    uint64_t gf_p = 0xffffffffffffffc5ULL; // largest unsigned 64-bit prime number
+    uint64_t gf_p = curve.p; // prime field size
     
     uint8_t** kib512_prep(std::string input)
     {
@@ -240,9 +299,6 @@ class Kib512 {
 };
 
 int main() {
-    // assert that double is 64-bits
-    assert(std::numeric_limits<long double>::is_iec559);
-    
     Kib512 kib512 = Kib512();
     // std::string in = "abcdefghqwertyuioplkjhgfdsazxcvbnm1234567890!@#$%^&*()\\/";
     std::string in = "abc";
@@ -258,5 +314,5 @@ int main() {
         }
     }
     std::cout << "\n\n" << std::hex << in.length();
-    return 0;
+return 0;
 }
