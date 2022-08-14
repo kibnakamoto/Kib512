@@ -7,7 +7,6 @@
 #include <iomanip>
 #include <bit>
 #include <assert.h>
-#include <vector>
 
 // use little-endian since it is the most common and will lead to less
 // conversions making it more efficient
@@ -84,24 +83,22 @@ inline uint64_t mod_inv(uint64_t a, uint64_t p) {
     return (x%p + p) % p;
 }
 
-inline uint64_t inv_mod(uint64_t x, uint64_t p) {
-    return NULL;
-}
-
 inline point_t point_add(point_t p1, point_t p2, uint64_t p, uint64_t a)
 {
-    uint64_t __lambda;
-    
-    // equation for private key and pointG
+    // equation for calculating point addition in ECC
     // find lambda
-    if (std::get(1)(p1) == p2[1] or p1[0] == p2[0]) {
-        __lambda = ((3*(p1[0]*p1[0]) + a)*mod_inv(2*p1[1], p)) % p;
+    uint64_t px,py,qx,qy,__lambda = std::get<0>(p1);
+    py = std::get<1>(p1);
+    qx = std::get<0>(p2);
+    qy = std::get<1>(p2);
+    if (py == qy || px == qx) {
+        __lambda = ((3*(px*px) + a)*mod_inv(2*py, p)) % p;
     } else {
-        __lambda = ((p2[1]-p1[1])*mod_inv(p2[0]-p1[0], p)) % p;
+        __lambda = ((qy-py)*mod_inv(qx-px, p)) % p;
     }
-    uint64_t xr = (__lambda*__lambda - p1[0] - p2[0]) % p;
-    uint64_t yr = (__lambda*(p1[0]-xr) - p1[1]) % p;
-    return (xr%p, yr%p);
+    uint64_t xr = (__lambda*__lambda - px - qx) % p;
+    uint64_t yr = (__lambda*(px-xr) - py) % p;
+    return std::make_pair(xr%p, yr%p);
 }
 
 // bitwise right-rotate
