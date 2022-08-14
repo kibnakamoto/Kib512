@@ -83,6 +83,15 @@ inline uint64_t mod_inv(uint64_t a, uint64_t p) {
     return (x%p + p) % p;
 }
 
+// bitwise right-rotate
+inline uint64_t rr(uint64_t x, unsigned int n) { return (x >> n)|(x << (64-n)); }
+
+// bitwise left-rotate
+inline uint64_t lr(uint64_t x, unsigned int n) { return (x << n)|(x >> (64-n)); }
+
+// convert to bit string
+inline std::string bin(uint64_t x) { return std::bitset<64>(x).to_string(); }
+
 inline point_t point_add(point_t p1, point_t p2, uint64_t p, uint64_t a)
 {
     // equation for calculating point addition in ECC
@@ -98,17 +107,35 @@ inline point_t point_add(point_t p1, point_t p2, uint64_t p, uint64_t a)
     }
     uint64_t xr = (__lambda*__lambda - px - qx) % p;
     uint64_t yr = (__lambda*(px-xr) - py) % p;
-    return std::make_pair(xr%p, yr%p);
+    return std::make_pair(xr, yr);
 }
 
-// bitwise right-rotate
-inline uint64_t rr(uint64_t x, unsigned int n) { return (x >> n)|(x << (64-n)); }
+inline point_t point_double(point_t p1, uint64_t p, uint64_t a) {
+    uint64_t x,y = std::get<0>(p1);
+    y = std::get<1>(p1);
+    uint64_t __lambda = ((3*(x*x) + a)*mod_inv(2*y, p)) % p;
+    uint64_t xr = (__lambda*__lambda - 2*x) % p;
+    uint64_t yr = (__lambda*(x - xr) - y) % p;
+    return std::make_pair(xr, yr);
 
-// bitwise left-rotate
-inline uint64_t lr(uint64_t x, unsigned int n) { return (x << n)|(x >> (64-n)); }
+}
 
-// convert to bit string
-inline std::string bin(uint64_t x) { return std::bitset<64>(x).to_string(); }
+// montgomery ladder ECC point multiplication 
+inline point_t montgomery_ladder(point_t r0, uint64_t k, uint64_t p,
+                                 uint64_t a) {
+    point_t r1 = point_double(r0,p,a);
+    std::string bits = bin(k).erase(0);
+    for(uint8_t i : bits) {
+        if (i == '0') {
+            r1 = point_add(r0,r1,p,a);
+            r0 = point_double(r0,p,a);
+        } else {
+            r0 = point_add(r0,r1,p,a);
+            r1 = point_double(r1,p,a);
+        }
+    }
+    return r0;
+}
 
 // pre-processing of kib512
 class Kib512 {
