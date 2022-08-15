@@ -8,12 +8,6 @@
 #include <bit>
 #include <assert.h>
 
-// use little-endian since it is the most common and will lead to less
-// conversions making it more efficient
-// try padding with ones instead of zeros for the manip_m matrix or with 0x3030303030303030ULL
-
-// algorithm supports proper diffusion
-
 #if !defined(UINT8_MAX)
 using uint8_t = unsigned char
 #endif
@@ -53,7 +47,7 @@ inline uint64_t extended_gcd(uint64_t a, uint64_t b, uint64_t &x)
 {
     x = 1;
     uint64_t y = 0;
-    if (0 == b) return a;
+    if (b == 0) return a;
     uint64_t n_x = 0;
     uint64_t n_y = 1;
     uint64_t n_r = b;
@@ -79,8 +73,9 @@ inline uint64_t mod_inv(uint64_t a, uint64_t p) {
     uint64_t gcd = extended_gcd(a,p,x);
     if (gcd != 1) {
         std::cout << std::flush << "gcd isn't one\n";
+        return 1;
     }
-    return (x%p + p) % p;
+    return (x+p) % p;
 }
 
 // bitwise right-rotate
@@ -96,22 +91,28 @@ inline point_t point_add(point_t p1, point_t p2, uint64_t p, uint64_t a)
 {
     // equation for calculating point addition in ECC
     // find lambda
-    uint64_t px,py,qx,qy,__lambda = std::get<0>(p1);
-    py = std::get<1>(p1);
-    qx = std::get<0>(p2);
-    qy = std::get<1>(p2);
-    if (py == qy || px == qx) {
-        __lambda = ((3*(px*px) + a)*mod_inv(2*py, p)) % p;
+    
+    uint64_t xp,yp,xq,yq,__lambda;
+    xp = std::get<0>(p1);
+    yp = std::get<1>(p1);
+    xq = std::get<0>(p2);
+    yq = std::get<1>(p2);
+    if (yp == yq || xp == xq) {
+        __lambda = ((3*((xp*xp)%p) + a)*mod_inv(2*yp, p)) % p;
     } else {
-        __lambda = ((qy-py)*mod_inv(qx-px, p)) % p;
+        __lambda = ((yq-yp)*mod_inv(xq-xp, p)) % p;
     }
-    uint64_t xr = (__lambda*__lambda - px - qx) % p;
-    uint64_t yr = (__lambda*(px-xr) - py) % p;
-    return std::make_pair(xr, yr);
+    uint64_t xr = (__lambda*__lambda - xp - xq)%p;
+    uint64_t yr = (__lambda*(xp-xr) - yp) % p;
+    
+    /* C++ modulo works differently than python's so subtract 1 from final output */
+    
+    return std::make_pair((xr+p)%p, yr);
 }
 
 inline point_t point_double(point_t p1, uint64_t p, uint64_t a) {
-    uint64_t x,y = std::get<0>(p1);
+    uint64_t x,y;
+    x = std::get<0>(p1);
     y = std::get<1>(p1);
     uint64_t __lambda = ((3*(x*x) + a)*mod_inv(2*y, p)) % p;
     uint64_t xr = (__lambda*__lambda - 2*x) % p;
