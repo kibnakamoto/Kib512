@@ -196,6 +196,12 @@ class Kib512 {
     // galois field size
     uint64_t gf_p = curve.p; // prime field size
     
+    Kib512(std::string input) {
+        
+    }
+    
+    ~Kib512();
+    
     uint8_t** kib512_prep(std::string input)
     {
         uint8_t** matrix = nullptr;
@@ -341,13 +347,13 @@ class Kib512 {
 };
 
 int main() {
-    Kib512 kib512 = Kib512();
+    Kib512 *kib512 = new Kib512("input");
     // std::string in = "abcdefghqwertyuioplkjhgfdsazxcvbnm1234567890!@#$%^&*()\\/";
     std::string in = "abc";
-    uint8_t **m = kib512.kib512_prep(in);
-    uint64_t ***manipm = kib512.prec_kib512(m);
+    uint8_t **m = kib512->kib512_prep(in);
+    uint64_t ***manipm = kib512->prec_kib512(m);
     
-    for(int i=0;i<kib512.b_size;i++) {
+    for(int i=0;i<kib512->b_size;i++) {
         for(int j=0;j<8;j++) {
             for(int k=0;k<8;k++) {
                 std::cout << std::setfill('0') << std::setw(16) << std::hex
