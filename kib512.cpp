@@ -137,6 +137,23 @@ inline point_t montgomery_ladder(point_t r0, uint64_t k, uint64_t p,
     return r0;
 }
 
+// square matrix multiplication in galois field over p
+template<size_t b_size>
+uint64_t** matrix_mul(uint64_t m1[b_size][b_size],
+                      uint64_t m2[b_size][b_size], uint64_t p)
+{
+    uint64_t **res = nullptr;
+    res = new uint64_t*[b_size];
+    for(size_t i=0;i<b_size;i++) {
+        res[i] = new uint64_t[b_size];
+        for(size_t j=0;j<b_size;j++) {
+            for(size_t k=0;k<b_size;k++) res[i][j] = (res[i][j] + m1[i][k] *
+                                                      m2[k][j]) % p;
+        }
+    }
+    return res;
+}
+
 // pre-processing of kib512
 class Kib512 {
     private:
