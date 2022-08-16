@@ -80,9 +80,24 @@ class Matrix
                                                         m1[k][j]) % p;
             }
         }
-        return res;
+        this->res = res;
+        return *this;
+    }
+    
+    ~Matrix() {
+        for(int i=0;i<size;i++) {
+            delete[] this->res[i];
+            delete[] m1[i];
+        }
+        delete[] this->res;
+        delete[] m1;
     }
 };
+
+// scalar multiplication in Galois Field 
+uint64_t mulgfp() {
+    
+}
 
 // extended Eucludian Algorithm
 inline uint64_t extended_gcd(uint64_t a, uint64_t b, uint64_t &x)
@@ -181,21 +196,21 @@ inline point_t montgomery_ladder(point_t r0, uint64_t k, uint64_t p,
 }
 
 // square matrix multiplication in galois field over p
-template<size_t b_size>
-uint64_t** matrix_mul(uint64_t m1[b_size][b_size],
-                      uint64_t m2[b_size][b_size], uint64_t p)
-{
-    uint64_t **res = nullptr;
-    res = new uint64_t*[b_size];
-    for(size_t i=0;i<b_size;i++) {
-        res[i] = new uint64_t[b_size];
-        for(size_t j=0;j<b_size;j++) {
-            for(size_t k=0;k<b_size;k++) res[i][j] = (res[i][j] + m1[i][k] *
-                                                      m2[k][j]) % p;
-        }
-    }
-    return res;
-}
+// template<size_t b_size>
+// uint64_t** matrix_mul(uint64_t m1[b_size][b_size],
+//                       uint64_t m2[b_size][b_size], uint64_t p)
+// {
+//     uint64_t **res = nullptr;
+//     res = new uint64_t*[b_size];
+//     for(size_t i=0;i<b_size;i++) {
+//         res[i] = new uint64_t[b_size];
+//         for(size_t j=0;j<b_size;j++) {
+//             for(size_t k=0;k<b_size;k++) res[i][j] = (res[i][j] + m1[i][k] *
+//                                                       m2[k][j]) % p;
+//         }
+//     }
+//     return res;
+// }
 
 // pre-processing of kib512
 class Kib512 {
