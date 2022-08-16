@@ -52,7 +52,7 @@ template<size_t size>
 class Matrix
 {
     private:
-    static uint64_t **m1;
+    uint64_t **m1;
     uint64_t p;
     
     Matrix(uint64_t matrix[size][size], uint64_t prime) {
@@ -68,6 +68,8 @@ class Matrix
         }
         p = prime;
     }
+    
+    public:
     
     // matrix multipication for 2 2d matrices on GF(p)
     Matrix operator* (uint64_t m[size][size]) const {
@@ -95,10 +97,202 @@ class Matrix
 };
 
 // scalar multiplication in Galois Field 
-uint64_t mulgfp() {
+class GaloisFieldP {
+    public:
+    uint64_t x;
+    uint64_t p;
     
-}
+    GaloisFieldP(uint64_t integer=0, uint64_t prime=0) {
+        this->x = integer;
+        this->p = prime;
+    }
+    
+    GaloisFieldP operator= (GaloisFieldP const &y) {
+        *this = y;
+        return *this;
+    }
+    
+    // assignment operator for integers
+    GaloisFieldP operator= (uint64_t &y) {
+        x = y%p;
+        return *this;
+    }
+    
+    GaloisFieldP operator+ (GaloisFieldP const &y) {
+        GaloisFieldP s;
+        s.x = (x + y.x)%p;
+        return s;
+    }
+    
+    GaloisFieldP operator+ (uint64_t y) {
+        GaloisFieldP s;
+        s.x = (x + y)%p;
+        return s;
+    }
+    
+    GaloisFieldP operator+= (GaloisFieldP const &y) {
+        x = (x + y.x)%p;
+        return *this;
+    }
+    
+    GaloisFieldP operator+= (const uint64_t &y) {
+        x = (x + y)%p;
+        return *this;
+    }
+    
+    GaloisFieldP operator% (GaloisFieldP const &y) {
+        GaloisFieldP s;
+        s.x = x%y.x;
+        return s;
+    }
+    
+    // modulo for integer type
+    GaloisFieldP operator% (const uint64_t &y) {
+        GaloisFieldP s;
+        s.x = x%y;
+        return s;
+    }
+    
+    GaloisFieldP operator%= (const uint64_t &y) {
+        x%= y;
+        return *this;
+    }
+    
+    GaloisFieldP operator%= (GaloisFieldP const &y) {
+        x%= y.x;
+        return *this;
+    }
+    
+    GaloisFieldP operator<<= (GaloisFieldP const &y) {
+        x = (x << y.x)%p;
+        return *this;
+    }
+    
+    GaloisFieldP operator<< (GaloisFieldP const &y) {
+        GaloisFieldP s;
+        s.x = (x << y.x)%p;
+        return s;
+    }
+    
+    GaloisFieldP operator>>= (GaloisFieldP const &y) {
+        x = (x >> y.x)%p;
+        return *this;
+    }
+    
+    GaloisFieldP operator>> (GaloisFieldP const &y) {
+        GaloisFieldP s;
+        s.x = (x >> y.x)%p;
+        return s;
+    }
+    
+    GaloisFieldP operator>> (uint64_t const &y) {
+        GaloisFieldP s;
+        s.x = (x >> y)%p;
+        return s;
+    }
+    
+    
+    bool operator> (GaloisFieldP const &y) {
+        bool s = x > y.x;
+        return s;
+    }
+    
+    bool operator< (GaloisFieldP const &y) {
+        bool s = x < y.x;
+        return s;
+    }
+    
+    bool operator== (GaloisFieldP const &y) {
+        bool s = x == y.x;
+        return s;
+    }
+    
+    GaloisFieldP operator& (GaloisFieldP const &y) {
+        GaloisFieldP s;
+        s.x = x & y.x;
+        return s;
+    }
+    
+    bool operator&& (GaloisFieldP const &y) {
+        bool s = x & y.x;
+        return s;
+    }
 
+    
+    GaloisFieldP operator&= (GaloisFieldP const &y) {
+        x = (x & y.x)%p;
+        return *this;
+    }
+    
+    GaloisFieldP operator^ (GaloisFieldP const &y) {
+        GaloisFieldP s;
+        s.x = (x ^ y.x)%p;
+        return s;
+    }
+    
+    GaloisFieldP operator^= (GaloisFieldP const &y) {
+        x = (x ^ y.x)%p;
+        return *this;
+    }
+    
+    GaloisFieldP operator* (const uint64_t &a) {
+        // rewrite multiplication for GF(p) and to avoid: x*y & 2^64-1
+        
+        GaloisFieldP y = GaloisFieldP(a,p); // create copy of const a
+        GaloisFieldP mul = 0;
+        while (y > 0) {
+            if (y && 1) {
+                mul+=x;
+            }
+            x<<=1;
+            y>>=1;
+        }
+        return mul;
+    }
+    
+    GaloisFieldP operator* (GaloisFieldP const &a) {
+        // rewrite multiplication for GF(p) and to avoid: x*y & 2^64-1
+        
+        GaloisFieldP y = a;
+        GaloisFieldP mul = 0;
+        while (y > 0) {
+            if (y && 1) {
+                mul = (mul+x) % p;
+            }
+            x = (x<<1) % p;
+            y>>=1;
+        }
+        return mul;
+    }
+    
+    GaloisFieldP operator*= (GaloisFieldP const &a) {
+        // rewrite multiplication for GF(p) and to avoid: x*y & 2^64-1
+        GaloisFieldP y = a;
+        GaloisFieldP mul = 0;
+        while (y.x > 0) {
+            if (y.x && 1) {
+                mul = (mul+x) % p;
+            }
+            x = (x<<1) % p;
+            y.x>>=1;
+        }
+        return mul;
+    }
+    
+    GaloisFieldP operator*= (uint64_t const &a) {
+        // rewrite multiplication for GF(p) and to avoid: x*y & 2^64-1
+        GaloisFieldP y = GaloisFieldP(a,p);
+        GaloisFieldP mul = 0;
+        while (y.x > 0) {
+            if (y.x && 1) {
+                mul+=x;
+            }
+            x = (x<<1) % p;
+            y.x>>=1;
+        }
+        return mul;
+    }
+};
 // extended Eucludian Algorithm
 inline uint64_t extended_gcd(uint64_t a, uint64_t b, uint64_t &x)
 {
