@@ -70,14 +70,14 @@ class Matrix
     }
     
     // matrix multipication for 2 2d matrices on GF(p)
-    Matrix operator* (Matrix<size>& m) const {
+    Matrix operator* (uint64_t m[size][size]) const {
         uint64_t **res = nullptr;
         res = new uint64_t*[size];
         for(size_t i=0;i<size;i++) {
             res[i] = new uint64_t[size];
             for(size_t j=0;j<size;j++) {
-                for(size_t k=0;k<size;k++) res[i][j] = (res[i][j] + m.m1[i][k] *
-                                                        m1[k][j]) % m.p;
+                for(size_t k=0;k<size;k++) res[i][j] = (res[i][j] + m[i][k] *
+                                                        m1[k][j]) % p;
             }
         }
         return res;
