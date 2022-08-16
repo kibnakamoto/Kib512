@@ -43,6 +43,48 @@ struct Tckp64k1
     const uint64_t h = 0x0000000000000001ULL; // co-factor
 };
 
+template<size_t size> class Matrix;
+template<size_t size> uint64_t** operator* (uint64_t m2[size][size],
+                                            const Matrix<size>& m);
+
+// only for square matrix multipication on GF(p) for same size matrices
+template<size_t size>
+class Matrix
+{
+    private:
+    static uint64_t **m1;
+    uint64_t p;
+    
+    Matrix(uint64_t matrix[size][size], uint64_t prime) {
+        m1 = nullptr;
+        m1 = new uint64_t*[size];
+        for(size_t i=0;i<size;i++) {
+            m1[i] = new uint64_t[size];
+            
+            // copy parameter matrix to operate on
+            for(size_t j=0;j<size;j++) {
+                m1[i][j] = matrix[i][j];
+            }
+        }
+        p = prime;
+    }
+    
+    // matrix multipication for 2 2d matrices on GF(p)
+    Matrix operator* (Matrix<size>& m) const {
+        uint64_t **res = nullptr;
+        res = new uint64_t*[size];
+        for(size_t i=0;i<size;i++) {
+            res[i] = new uint64_t[size];
+            for(size_t j=0;j<size;j++) {
+                for(size_t k=0;k<size;k++) res[i][j] = (res[i][j] + m.m1[i][k] *
+                                                        m1[k][j]) % m.p;
+            }
+        }
+        return res;
+    }
+};
+
+// extended Eucludian Algorithm
 inline uint64_t extended_gcd(uint64_t a, uint64_t b, uint64_t &x)
 {
     x = 1;
@@ -196,9 +238,7 @@ class Kib512 {
     // galois field size
     uint64_t gf_p = curve.p; // prime field size
     
-    Kib512(std::string input) {
-        
-    }
+    Kib512(std::string input);
     
     ~Kib512();
     
@@ -346,6 +386,16 @@ class Kib512 {
     }
 };
 
+// define constructor
+Kib512::Kib512(std::string input) {
+    
+}
+
+// define destructor
+Kib512::~Kib512() {
+    
+}
+
 int main() {
     Kib512 *kib512 = new Kib512("input");
     // std::string in = "abcdefghqwertyuioplkjhgfdsazxcvbnm1234567890!@#$%^&*()\\/";
@@ -362,5 +412,5 @@ int main() {
         }
     }
     std::cout << "\n\n" << std::hex << in.length();
-return 0;
+    return 0;
 }
