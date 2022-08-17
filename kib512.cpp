@@ -58,13 +58,16 @@ inline uint64_t mod_inv(uint64_t a, uint64_t p) {
     return (x+p) % p;
 }
 
-// scalar multiplication in Galois Field 
+// Operators in Galois Field
 class GaloisFieldP {
     public:
     uint64_t x;
     uint64_t p;
     
     GaloisFieldP(uint64_t integer=0, uint64_t prime=0xffffffffffffffc5ULL) {
+        if (prime == 0) {
+            throw std::invalid_argument("p = 0, cannot do modulo 0");
+        }
         this->x = integer;
         this->p = prime;
     }
@@ -78,8 +81,6 @@ class GaloisFieldP {
     GaloisFieldP operator= (GaloisFieldP const &y) {
         p = y.p;
         x = y.x%p;
-        return *this;
-
         return *this;
     }
     
@@ -95,7 +96,7 @@ class GaloisFieldP {
     }
     
     GaloisFieldP operator+ (const uint64_t &y) {
-        GaloisFieldP s((x - y)%p, p);
+        GaloisFieldP s((x + y)%p, p);
         return s;
     }
     
@@ -125,11 +126,14 @@ class GaloisFieldP {
     }
     
     GaloisFieldP operator% (GaloisFieldP const &y) {
-        GaloisFieldP s(x%y.x, p);
-        return s;
+        if (y.x != 0) {
+            GaloisFieldP s(x%(y.x), p);
+            return s;
+        }
+        return 0;
     }
     
-    // modulo for integer type
+    // modulo for integer type, for overloading modulo for % y.p instead of % y.x
     GaloisFieldP operator% (const uint64_t &y) {
         GaloisFieldP s(x%y, p);
         return s;
@@ -295,17 +299,23 @@ class GaloisFieldP {
     }
 };
 
+// output stream operator
+std::ostream& operator<< (std::ostream& out, GaloisFieldP toprint) {
+    out << toprint.x;
+    return out;
+}
+
 using point_t = std::pair<GaloisFieldP,GaloisFieldP>;
 
 // only for square matrix multipication on GF(p) for same size matrices
 template<size_t size>
 class Matrix
 {
-    private:
+    public:
     GaloisFieldP **m1;
     GaloisFieldP p;
+    GaloisFieldP **res;
     
-    public:
     Matrix(GaloisFieldP matrix[size][size], GaloisFieldP prime) {
         m1 = nullptr;
         m1 = new GaloisFieldP*[size];
@@ -314,35 +324,42 @@ class Matrix
             
             // copy parameter matrix to operate on
             for(size_t j=0;j<size;j++) {
-                m1[i][j] = matrix[i][j];
+                m1[i][j] = matrix[i][j] % prime;
             }
         }
         p = prime;
     }
     
     // square matrix multipication for 2 2d matrices on GF(p)
-    Matrix operator* (uint64_t m[size][size]) const {
-        uint64_t **res = nullptr;
-        res = new uint64_t*[size];
+    Matrix operator* (GaloisFieldP m[size][size]) {
+        res = nullptr;
+        res = new GaloisFieldP*[size];
         for(size_t i=0;i<size;i++) {
-            res[i] = new uint64_t[size];
+            res[i] = new GaloisFieldP[size];
             for(size_t j=0;j<size;j++) {
-                for(size_t k=0;k<size;k++) res[i][j] = (res[i][j] + m[i][k] *
-                                                        m1[k][j]);
+                res[i][j].p = p.p;  // change field sizes
+                for(size_t k=0;k<size;k++) {
+                    m[i][k].p = p.p; // change field sizes
+                    m1[k][j].p = p.p; // change field sizes
+                    res[i][j] = res[i][j] + m[i][k] * m1[k][j];
+                }
             }
         }
-        this->res = res;
         return *this;
     }
     
-    ~Matrix() {
-        for(int i=0;i<size;i++) {
-            delete[] this->res[i];
-            delete[] m1[i];
-        }
-        delete[] this->res;
-        delete[] m1;
+    GaloisFieldP* operator[] (int64_t index) {
+        return res[index];
     }
+    
+    // ~Matrix() {
+        // for(int i=0;i<size;i++) {
+            // delete[] res[i];
+            // delete[] m1[i];
+        // }
+        // delete[] res;
+        // delete[] m1;
+    // }
 };
 
 // Taha Canturk Kibnakamoto 64-bit Koblitz curve with prime field size
