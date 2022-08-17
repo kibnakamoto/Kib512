@@ -400,7 +400,13 @@ inline point_t point_double(point_t p1, GaloisFieldP p, GaloisFieldP a) {
 inline point_t montgomery_ladder(point_t r0, uint64_t k, uint64_t p,
                                  uint64_t a) {
     point_t r1 = point_double(r0,p,a);
-    std::string bits = bin(k).erase(0);
+    std::string bits = bin(k);
+    int first_one = bits.find('1');
+    if (first_one != std::string::npos) {
+        bits = bits.substr(first_one+1);
+    } else {
+        bits = '0'; // if there is no '1', there is only one '0'
+    }
     for(uint8_t i : bits) {
         if (i == '0') {
             r1 = point_add(r0,r1,p,a);
