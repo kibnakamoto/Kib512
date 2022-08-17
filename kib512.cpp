@@ -8,6 +8,8 @@
 #include <bit>
 #include <assert.h>
 
+// TODO: redfine addition so that addition modulo works on large numbers
+
 #if !defined(UINT8_MAX)
 using uint8_t = unsigned char
 #endif
