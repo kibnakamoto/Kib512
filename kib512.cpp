@@ -310,7 +310,6 @@ class Matrix
                 res[i][j].p = p.p;  // change field sizes
                 for(size_t k=0;k<size;k++) {
                     m[i][k].p = p.p; // change field sizes
-                    m1[k][j].p = p.p; // change field sizes
                     res[i][j] = res[i][j] + m[i][k] * m1[k][j];
                 }
             }
