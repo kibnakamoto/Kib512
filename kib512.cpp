@@ -93,12 +93,12 @@ class GaloisFieldP {
     }
     
     GaloisFieldP operator+ (GaloisFieldP const &y) {
-        GaloisFieldP s((x + y.x)%p, p);
+        GaloisFieldP s(((__uint128_t)x + y.x)%p, p);
         return s;
     }
     
     GaloisFieldP operator+ (const uint64_t &y) {
-        GaloisFieldP s((x + y)%p, p);
+        GaloisFieldP s(((__uint128_t)x + y)%p, p);
         return s;
     }
     
@@ -118,12 +118,12 @@ class GaloisFieldP {
     }
     
     GaloisFieldP operator+= (GaloisFieldP const &y) {
-        x = (x + y.x)%p;
+        x = ((__uint128_t)x + y.x)%p;
         return *this;
     }
     
     GaloisFieldP operator+= (const uint64_t &y) {
-        x = (x + y)%p;
+        x = ((__uint128_t)x + y)%p;
         return *this;
     }
     
@@ -248,56 +248,24 @@ class GaloisFieldP {
         return *this;
     }
     
-    GaloisFieldP operator* (const uint64_t &a) {
-        GaloisFieldP y = GaloisFieldP(a,p); // create copy of const a
-        GaloisFieldP mul = GaloisFieldP(0,p);
-        while (y > 0) {
-            if (y && 1) {
-                mul+=x;
-            }
-            x<<=1;
-            y>>=1;
-        }
+    GaloisFieldP operator* (const uint64_t &y) {
+        GaloisFieldP mul = GaloisFieldP(((__uint128_t)x*y)%p,p);
         return mul;
     }
     
-    GaloisFieldP operator* (GaloisFieldP const &a) {
-        GaloisFieldP y = a;
-        GaloisFieldP mul = GaloisFieldP(0,p);
-        while (y > 0) {
-            if (y && 1) {
-                mul = (mul+x) % p;
-            }
-            x = (x<<1) % p;
-            y>>=1;
-        }
+    GaloisFieldP operator* (GaloisFieldP y) {
+        GaloisFieldP mul = GaloisFieldP(((__uint128_t)x*y.x)%p,p);
         return mul;
     }
     
-    GaloisFieldP operator*= (GaloisFieldP const &a) {
-        GaloisFieldP y = a;
-        GaloisFieldP mul = GaloisFieldP(0,p);
-        while (y.x > 0) {
-            if (y.x && 1) {
-                mul = (mul+x) % p;
-            }
-            x = (x<<1) % p;
-            y.x>>=1;
-        }
-        return mul;
+    GaloisFieldP operator*= (GaloisFieldP y) {
+        x = ((__uint128_t)x*y.x)%p;
+        return *this;
     }
     
-    GaloisFieldP operator*= (uint64_t const &a) {
-        GaloisFieldP y = GaloisFieldP(a,p);
-        GaloisFieldP mul = GaloisFieldP(0,p);
-        while (y.x > 0) {
-            if (y.x && 1) {
-                mul+=x;
-            }
-            x = (x<<1) % p;
-            y.x>>=1;
-        }
-        return mul;
+    GaloisFieldP operator*= (uint64_t y) {
+        x = ((__uint128_t)x*y)%p;
+        return *this;
     }
 };
 
@@ -445,23 +413,6 @@ inline point_t montgomery_ladder(point_t r0, uint64_t k, uint64_t p,
     }
     return r0;
 }
-
-// square matrix multiplication in galois field over p
-// template<size_t b_size>
-// uint64_t** matrix_mul(uint64_t m1[b_size][b_size],
-//                       uint64_t m2[b_size][b_size], uint64_t p)
-// {
-//     uint64_t **res = nullptr;
-//     res = new uint64_t*[b_size];
-//     for(size_t i=0;i<b_size;i++) {
-//         res[i] = new uint64_t[b_size];
-//         for(size_t j=0;j<b_size;j++) {
-//             for(size_t k=0;k<b_size;k++) res[i][j] = (res[i][j] + m1[i][k] *
-//                                                       m2[k][j]) % p;
-//         }
-//     }
-//     return res;
-// }
 
 // pre-processing of kib512
 class Kib512 {
