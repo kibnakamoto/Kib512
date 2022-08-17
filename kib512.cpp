@@ -111,17 +111,17 @@ class GaloisFieldP {
     }
     
     GaloisFieldP operator<<= (GaloisFieldP const &y) {
-        x = (x << y.x)%p;
+        x = ((__uint128_t)x << y.x)%p;
         return *this;
     }
     
     GaloisFieldP operator<< (GaloisFieldP const &y) {
-        GaloisFieldP s((x << y.x)%p);
+        GaloisFieldP s(((__uint128_t)x << y.x)%p);
         return s;
     }
     
     GaloisFieldP operator<< (uint64_t &y) {
-        GaloisFieldP s((x << y)%p, p);
+        GaloisFieldP s(((__uint128_t)x << y)%p, p);
         return s;
     }
 
