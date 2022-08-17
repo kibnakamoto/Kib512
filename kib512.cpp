@@ -8,8 +8,6 @@
 #include <bit>
 #include <assert.h>
 
-// TODO: redfine addition so that addition modulo works on large numbers
-
 #if !defined(UINT8_MAX)
 using uint8_t = unsigned char
 #endif
@@ -23,42 +21,6 @@ using uint64_t = unsigned long long
 #endif
 
 template<size_t size> class Matrix;
-
-// extended Eucludian Algorithm
-inline uint64_t extended_gcd(uint64_t a, uint64_t b, uint64_t &x)
-{
-    x = 1;
-    uint64_t y = 0;
-    if (b == 0) return a;
-    uint64_t n_x = 0;
-    uint64_t n_y = 1;
-    uint64_t n_r = b;
-    uint64_t r = a;
-    uint64_t quot, tmp;
-    while (n_r) {
-        quot = r / n_r;
-        tmp = r;
-        r = n_r;
-        n_r = tmp - quot * n_r;
-        tmp = x;
-        x = n_x;
-        n_x = tmp - quot * n_x;
-        tmp = y;
-        y = n_y;
-        n_y = tmp - quot * n_y;
-    }
-    return r;
-}
-
-inline uint64_t mod_inv(uint64_t a, uint64_t p) {
-    uint64_t x;
-    uint64_t gcd = extended_gcd(a,p,x);
-    if (gcd != 1) {
-        std::cout << std::flush << "gcd isn't one\n";
-        return 1;
-    }
-    return (x+p) % p;
-}
 
 // Operators in Galois Field
 class GaloisFieldP {
@@ -75,10 +37,7 @@ class GaloisFieldP {
     }
     
     // modular inverse
-    GaloisFieldP operator~() const {
-        GaloisFieldP s(mod_inv(x,p), p);
-        return s;
-    }
+    GaloisFieldP operator~() const;
     
     GaloisFieldP operator= (GaloisFieldP const &y) {
         p = y.p;
@@ -103,17 +62,17 @@ class GaloisFieldP {
     }
     
     GaloisFieldP operator- (const uint64_t &y) {
-        GaloisFieldP s((x - y)%p, p);
+        GaloisFieldP s(((__uint128_t)x - y+p)%p, p);
         return s;
     }
     
     GaloisFieldP operator- (GaloisFieldP const &y) {
-        GaloisFieldP s((x - y.x)%p, p);
+        GaloisFieldP s(((__uint128_t)x - y.x+p)%p, p);
         return s;
     }
     
     GaloisFieldP operator-= (GaloisFieldP const &y) {
-        x = (x - y.x)%p;
+        x = ((__uint128_t)x - y.x+p)%p;
         return *this;
     }
     
@@ -277,6 +236,48 @@ std::ostream& operator<< (std::ostream& out, GaloisFieldP toprint) {
 
 using point_t = std::pair<GaloisFieldP,GaloisFieldP>;
 
+// extended Eucludian Algorithm
+inline GaloisFieldP extended_gcd(GaloisFieldP a, GaloisFieldP b, GaloisFieldP &x)
+{
+    x = 1;
+    GaloisFieldP y = GaloisFieldP(0,b.p);
+    if (b == 0) return a;
+    GaloisFieldP n_x = GaloisFieldP(0,b.p);
+    GaloisFieldP n_y = GaloisFieldP(1,b.p);
+    GaloisFieldP n_r = GaloisFieldP(b.p,0xffffffffffffffffULL);
+    GaloisFieldP r = GaloisFieldP(a.x,b.p); 
+    GaloisFieldP quot, tmp;
+    while ((bool)n_r.x) {
+        quot = r / n_r;
+        tmp = r;
+        r = n_r;
+        n_r = tmp - quot * n_r;
+        tmp = x;
+        x = n_x;
+        n_x = tmp - quot * n_x;
+        tmp = y;
+        y = n_y;
+        n_y = tmp - quot * n_y;
+    }
+    return r;
+}
+
+inline GaloisFieldP mod_inv(GaloisFieldP a, GaloisFieldP p) {
+    GaloisFieldP x;
+    GaloisFieldP gcd = extended_gcd(a,p,x);
+    if (gcd.x != 1) {
+        std::cout << std::flush << "gcd isn't one\n";
+        return 1;
+    }
+    return (x+p) % p;
+}
+
+// modular inverse
+GaloisFieldP GaloisFieldP::operator~() const {
+    GaloisFieldP s(mod_inv(x,p).x, p);
+    return s;
+}
+
 // only for square matrix multipication on GF(p) for same size matrices
 template<size_t size>
 class Matrix
@@ -352,7 +353,6 @@ struct Tckp64k1
     const GaloisFieldP h = 0x0000000000000001ULL; // co-factor
 };
 
-
 // bitwise right-rotate
 inline GaloisFieldP rr(GaloisFieldP x, unsigned int n) { return (x >> n)|(x << (64-n)); }
 
@@ -373,7 +373,7 @@ inline point_t point_add(point_t p1, point_t p2, GaloisFieldP p, GaloisFieldP a)
     xq = std::get<0>(p2);
     yq = std::get<1>(p2);
     if (yp == yq || xp == xq) {
-        __lambda = ((GaloisFieldP(3)*xp*xp + a)*~(GaloisFieldP(2)*yp)) % p;
+        __lambda = ((GaloisFieldP(3,p.p)*xp*xp + a)*~(GaloisFieldP(2,p.p)*yp)) % p;
     } else {
         __lambda = (yq-yp)*~(xq-xp);
     }
@@ -382,18 +382,18 @@ inline point_t point_add(point_t p1, point_t p2, GaloisFieldP p, GaloisFieldP a)
     
     /* C++ modulo works differently than python's so subtract 1 from final output */
     
-    return std::make_pair((xr+p), yr);
+    return std::make_pair(xr+p, yr);
 }
 
 inline point_t point_double(point_t p1, GaloisFieldP p, GaloisFieldP a) {
     GaloisFieldP x,y;
     x = std::get<0>(p1);
     y = std::get<1>(p1);
-    GaloisFieldP __lambda = (GaloisFieldP(3)*(x*x) + a)*~(GaloisFieldP(2)*y);
-    GaloisFieldP xr = __lambda*__lambda - GaloisFieldP(2)*x;
+    GaloisFieldP __lambda = (GaloisFieldP(3,p.p)*(x*x) + a)*~(GaloisFieldP(2,p.p)*y);
+    std::cout << ~(GaloisFieldP(2,p.p)*y);
+    GaloisFieldP xr = __lambda*__lambda - GaloisFieldP(2,p.p)*x;
     GaloisFieldP yr = __lambda*(x - xr) - y;
     return std::make_pair(xr, yr);
-
 }
 
 // montgomery ladder ECC point multiplication 
@@ -552,7 +552,6 @@ class Kib512 {
                     tn3 = manip_m[(i+b_size)%b_size][j-1][(k+6)%8];
                     tn2 = manip_m[i][j-1][(k+1)%8];
                     tn1 = manip_m[i][j-1][k];
-                    
                     GaloisFieldP sigma0 = rr(tn1, p[0]) xor rr(tn2, p[1]) xor (tn3 << p[2]) |
                                       (tn4 << p[3]) % gf_p;
                     GaloisFieldP sigma1 = rr(tn4, p[3]) xor lr(tn1, p[0]) xor (tn2 << p[1]) |
