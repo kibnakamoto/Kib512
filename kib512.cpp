@@ -22,55 +22,6 @@ using uint64_t = unsigned long long
 
 template<size_t size> class Matrix;
 
-// only for square matrix multipication on GF(p) for same size matrices
-template<size_t size>
-class Matrix
-{
-    private:
-    uint64_t **m1;
-    uint64_t p;
-    
-    Matrix(uint64_t matrix[size][size], uint64_t prime) {
-        m1 = nullptr;
-        m1 = new uint64_t*[size];
-        for(size_t i=0;i<size;i++) {
-            m1[i] = new uint64_t[size];
-            
-            // copy parameter matrix to operate on
-            for(size_t j=0;j<size;j++) {
-                m1[i][j] = matrix[i][j];
-            }
-        }
-        p = prime;
-    }
-    
-    public:
-    
-    // square matrix multipication for 2 2d matrices on GF(p)
-    Matrix operator* (uint64_t m[size][size]) const {
-        uint64_t **res = nullptr;
-        res = new uint64_t*[size];
-        for(size_t i=0;i<size;i++) {
-            res[i] = new uint64_t[size];
-            for(size_t j=0;j<size;j++) {
-                for(size_t k=0;k<size;k++) res[i][j] = (res[i][j] + m[i][k] *
-                                                        m1[k][j]) % p;
-            }
-        }
-        this->res = res;
-        return *this;
-    }
-    
-    ~Matrix() {
-        for(int i=0;i<size;i++) {
-            delete[] this->res[i];
-            delete[] m1[i];
-        }
-        delete[] this->res;
-        delete[] m1;
-    }
-};
-
 // extended Eucludian Algorithm
 inline uint64_t extended_gcd(uint64_t a, uint64_t b, uint64_t &x)
 {
@@ -125,7 +76,10 @@ class GaloisFieldP {
     }
     
     GaloisFieldP operator= (GaloisFieldP const &y) {
-        *this = y;
+        p = y.p;
+        x = y.x%p;
+        return *this;
+
         return *this;
     }
     
@@ -342,6 +296,54 @@ class GaloisFieldP {
 };
 
 using point_t = std::pair<GaloisFieldP,GaloisFieldP>;
+
+// only for square matrix multipication on GF(p) for same size matrices
+template<size_t size>
+class Matrix
+{
+    private:
+    GaloisFieldP **m1;
+    GaloisFieldP p;
+    
+    public:
+    Matrix(GaloisFieldP matrix[size][size], GaloisFieldP prime) {
+        m1 = nullptr;
+        m1 = new GaloisFieldP*[size];
+        for(size_t i=0;i<size;i++) {
+            m1[i] = new GaloisFieldP[size];
+            
+            // copy parameter matrix to operate on
+            for(size_t j=0;j<size;j++) {
+                m1[i][j] = matrix[i][j];
+            }
+        }
+        p = prime;
+    }
+    
+    // square matrix multipication for 2 2d matrices on GF(p)
+    Matrix operator* (uint64_t m[size][size]) const {
+        uint64_t **res = nullptr;
+        res = new uint64_t*[size];
+        for(size_t i=0;i<size;i++) {
+            res[i] = new uint64_t[size];
+            for(size_t j=0;j<size;j++) {
+                for(size_t k=0;k<size;k++) res[i][j] = (res[i][j] + m[i][k] *
+                                                        m1[k][j]);
+            }
+        }
+        this->res = res;
+        return *this;
+    }
+    
+    ~Matrix() {
+        for(int i=0;i<size;i++) {
+            delete[] this->res[i];
+            delete[] m1[i];
+        }
+        delete[] this->res;
+        delete[] m1;
+    }
+};
 
 // Taha Canturk Kibnakamoto 64-bit Koblitz curve with prime field size
 struct Tckp64k1
