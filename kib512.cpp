@@ -287,7 +287,7 @@ class Matrix
     GaloisFieldP p;
     GaloisFieldP **res;
     
-    Matrix(GaloisFieldP matrix[size][size], GaloisFieldP prime) {
+    Matrix(uint64_t **matrix, uint64_t prime) {
         m1 = nullptr;
         m1 = new GaloisFieldP*[size];
         for(size_t i=0;i<size;i++) {
@@ -295,14 +295,14 @@ class Matrix
             
             // copy parameter matrix to operate on
             for(size_t j=0;j<size;j++) {
-                m1[i][j] = matrix[i][j] % prime;
+                m1[i][j] = GaloisFieldP(matrix[i][j],prime) % prime;
             }
         }
-        p = prime;
+        p.p = prime;
     }
     
     // square matrix multipication for 2 2d matrices on GF(p)
-    Matrix operator* (GaloisFieldP m[size][size]) {
+    Matrix operator* (const std::array<std::array<uint64_t,size>,size> m) {
         res = nullptr;
         res = new GaloisFieldP*[size];
         for(size_t i=0;i<size;i++) {
@@ -310,8 +310,7 @@ class Matrix
             for(size_t j=0;j<size;j++) {
                 res[i][j].p = p.p;  // change field sizes
                 for(size_t k=0;k<size;k++) {
-                    m[i][k].p = p.p; // change field sizes
-                    res[i][j] = res[i][j] + m[i][k] * m1[k][j];
+                    res[i][j] = res[i][j] + m1[k][j] * GaloisFieldP(m[i][k],p.p);
                 }
             }
         }
@@ -431,7 +430,7 @@ class Kib512 {
     
     public:
     uint64_t m_ch;
-    static constexpr uint64_t const const_m[8][8] = {
+    static constexpr const std::array<std::array<uint64_t,8>, 8> const_m = {{
         {0x159a300c24f5dc1eULL, 0x178f1324ac498bfcULL, 0x10e55f6926814653ULL,
          0x1963cf80d6276cccULL,0x10980aa9695d807aULL, 0x1703f56bbe1f7f5eULL,
          0x16eb052c4abc81feULL, 0x1f190bb16583b88fULL}, {0x1d6d15eb483d1a05ULL,
@@ -454,7 +453,7 @@ class Kib512 {
          0x7c29a354966d3f55ULL, 0x1cf4c5f3b98ce4deULL, 0x1476b731259de5f8ULL, 
          0x73642b2ec6c2a44bULL, 0x407adff58f6e054cULL, 0x811f7cbc6a7e08c7ULL,
          0x277c0323eb636b90ULL}
-    };
+    }};
     
     mutable uint64_t hash[8] {
         0x5287173768046659ULL, 0x1388c1a81885db29ULL, 0xc582055c7b0f1a24ULL,
@@ -559,13 +558,13 @@ class Kib512 {
                     tn2 = manip_m[i][j-1][(k+1)%8];
                     tn1 = manip_m[i][j-1][k];
                     GaloisFieldP sigma0 = rr(tn1, p[0]) xor rr(tn2, p[1]) xor (tn3 << p[2]) |
-                                      (tn4 << p[3]) % gf_p;
+                                          (tn4 << p[3]) % gf_p;
                     GaloisFieldP sigma1 = rr(tn4, p[3]) xor lr(tn1, p[0]) xor (tn2 << p[1]) |
-                                      (tn3 << p[2]) % gf_p;
+                                          (tn3 << p[2]) % gf_p;
                     GaloisFieldP sigma2 = rr(tn3, p[2]) xor lr(tn4, p[3]) xor (tn1 << p[0]) |
-                                      (tn2 << p[1]) % gf_p;
+                                          (tn2 << p[1]) % gf_p;
                     GaloisFieldP sigma3 = rr(tn2, p[1]) xor lr(tn3, p[2]) xor (tn4 << p[3]) |
-                                      (tn1 << p[0]) % gf_p;
+                                          (tn1 << p[0]) % gf_p;
                     
                     // use arithmetic addition for non-linearity
                     manip_m[i][j][k] = (sigma0/p[k%4] +
@@ -578,7 +577,34 @@ class Kib512 {
     // compression function
     void hash_kib512()
     {
-        
+        // process on const_m for compression
+        for(uint64_t i=0;i<b_size;i++) {
+            Matrix<8> new_manip_mi(manip_m[i], gf_p.p);
+            
+            std::array<std::array<uint64_t, 8>, 8> copy;
+            size_t n,s;
+            n=0;
+            s=0;
+            for(int j=0;j<8;j++) {
+                for(int k=0;k<8;k++) {
+                    n = (n+1)%8;
+                    if (!manip_m[i][j][k]&1) {
+                        n = (n+1)%8;
+                    }
+                    copy[j][k] = const_m[n][s];
+                }
+                s = (n-1)%8;
+            }
+            
+            // matrix multiplication with non-randomized shuffling on const_m
+            Matrix res = new_manip_mi * copy;
+            for(int j=0;j<8;j++) {
+                for(int k=0;k<8;k++) {
+                    std::cout << std::setfill('0') << std::setw(16) << std::hex
+                              << copy[j][k] << "\t";
+                }
+            }
+        }
     }
     
     template<typename T>
@@ -632,12 +658,14 @@ int main() {
     std::string in = "abc";
     kib512->kib512_prep(in);
     kib512->prec_kib512();
+    kib512->hash_kib512();
     
+    std::cout << "\n\n";
     for(int i=0;i<kib512->b_size;i++) {
         for(int j=0;j<8;j++) {
             for(int k=0;k<8;k++) {
-                std::cout << std::setfill('0') << std::setw(16) << std::hex
-                          << kib512->manip_m[i][j][k] << "\t";
+                // std::cout << std::setfill('0') << std::setw(16) << std::hex
+                //           << kib512->manip_m[i][j][k] << "\t";
             }
         }
     }
