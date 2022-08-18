@@ -577,32 +577,29 @@ class Kib512 {
     // compression function
     void hash_kib512()
     {
+        std::array<std::array<uint64_t, 8>, 8> copy;
+        size_t n,s;
+        
         // process on const_m for compression
         for(uint64_t i=0;i<b_size;i++) {
             Matrix<8> new_manip_mi(manip_m[i], gf_p.p);
-            
-            std::array<std::array<uint64_t, 8>, 8> copy;
-            size_t n,s;
-            n=0;
-            s=0;
+            n = manip_m[i][0][0]%8; // first value of manip_m[i], starting index
+            s = manip_m[i][7][7]%8; // last value of manip_m[i], starting index
             for(int j=0;j<8;j++) {
+                n = (n+1)%8;
                 for(int k=0;k<8;k++) {
-                    n = (n+1)%8;
-                    if (!manip_m[i][j][k]&1) {
-                        n = (n+1)%8;
-                    }
-                    copy[j][k] = const_m[n][s];
+                    s = (s+1)%8;
+                    copy[j][k] = const_m[s][n];
                 }
-                s = (n-1)%8;
             }
             
             // matrix multiplication with non-randomized shuffling on const_m
             Matrix res = new_manip_mi * copy;
             for(int j=0;j<8;j++) {
                 for(int k=0;k<8;k++) {
-                    std::cout << std::setfill('0') << std::setw(16) << std::hex
-                              << copy[j][k] << "\t";
-                }
+                    std::cout << ", 0x" << std::setfill('0') << std::setw(16) << std::hex
+                              << res[j][k] << "\t";
+                } std::cout << std::endl;
             }
         }
     }
