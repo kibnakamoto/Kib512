@@ -7,17 +7,14 @@
 #include <iomanip>
 #include <bit>
 #include <assert.h>
+#include <vector>
 
 #if !defined(UINT8_MAX)
-using uint8_t = unsigned char
-#endif
-
-#if !defined(UINT32_MAX)
-using uint32_t = unsigned int
-#endif
-
-#if !defined(UINT64_MAX)
-using uint64_t = unsigned long long
+    using uint8_t = unsigned char
+#elif !defined(UINT32_MAX)
+    using uint32_t = unsigned int
+#elif !defined(UINT64_MAX)
+    using uint64_t = unsigned long long
 #endif
 
 template<size_t size> class Matrix;
@@ -62,17 +59,22 @@ class GaloisFieldP {
     }
     
     GaloisFieldP operator- (const uint64_t &y) {
-        GaloisFieldP s(((__uint128_t)x - y+p)%p, p);
+        GaloisFieldP s(((__uint128_t)((x+p)%p) - y+p)%p, p);
         return s;
     }
     
     GaloisFieldP operator- (GaloisFieldP const &y) {
-        GaloisFieldP s(((__uint128_t)x - y.x+p)%p, p);
+        GaloisFieldP s(((__int128_t)x - y.x+p)%p, p);
+        return s;
+    }
+    
+    GaloisFieldP operator- () {
+        GaloisFieldP s((-x+p)%p,p);
         return s;
     }
     
     GaloisFieldP operator-= (GaloisFieldP const &y) {
-        x = ((__uint128_t)x - y.x+p)%p;
+        x = ((__int128_t)x - y.x+p)%p;
         return *this;
     }
     
@@ -168,6 +170,16 @@ class GaloisFieldP {
     
     bool operator== (GaloisFieldP const &y) {
         bool s = x == y.x;
+        return s;
+    }
+    
+    bool operator!= (uint64_t y) {
+        bool s = x%p != y%p;
+        return s;
+    }
+    
+    bool operator!= (GaloisFieldP y) {
+        bool s = x%p != y.x%p;
         return s;
     }
     
@@ -276,6 +288,37 @@ inline GaloisFieldP mod_inv(GaloisFieldP a, GaloisFieldP p) {
 GaloisFieldP GaloisFieldP::operator~() const {
     GaloisFieldP s(mod_inv(x,p).x, p);
     return s;
+}
+
+template<size_t len_a,size_t len_b>
+std::vector<GaloisFieldP> poly_mul(std::array<GaloisFieldP, len_a> a, 
+                                   std::array<GaloisFieldP, len_b> b) {
+    std::vector<GaloisFieldP> lst(len_a+len_b-1);
+    for(size_t i=0;i<len_a;i++) {
+        for(size_t j=0;j<len_b;j++) {
+            lst[i+j] = a[i] * b[j] + lst[i+j];
+        }
+    }
+    return lst;
+}
+
+template<size_t len_f>
+std::vector<GaloisFieldP> poly_mod(std::vector<GaloisFieldP> a,
+                                   std::array<GaloisFieldP,len_f> f) {
+    size_t len_a = a.size();
+    if(len_f < 2)
+        throw std::invalid_argument("invalid f(x): f(x) smaller than 2");
+    
+    while(len_a >= len_f) {
+        if(a[len_a-1] != 0) {
+            for(size_t i=len_f;i>1;i--) {
+                a[len_a-i] = a[len_a-i]-a[len_a-1]*f[len_f-i];
+            }
+        }
+        a.erase(a.end()-1);
+        len_a = a.size();
+    }
+    return a;
 }
 
 // only for square matrix multipication on GF(p) for same size matrices
