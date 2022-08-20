@@ -543,7 +543,9 @@ class Kib512 {
         input+=0x90;
         
         // padding
-        for(int c=0;c<pad;c++) input+='0';
+        for(int c=0;c<pad;c++) {
+            input+='0';
+        }
         
         // add length of input in hex to end of input input
         ss << std::setfill('0') << std::setw(16) << std::hex << len;
@@ -656,11 +658,12 @@ class Kib512 {
             }
             
             // matrix multiplication with non-randomized shuffling on const_m
+            // 8x8 matrix on curve tckp64k1
             Matrix<8, Tckp64k1> res = new_manip_mi * copy;
             for(int j=0;j<8;j++) {
                 for(int k=0;k<8;k++) {
                     std::cout << ", 0x" << std::setfill('0') << std::setw(16) << std::hex
-                              << res[j][k] << "\t";
+                              << res[j][k];
                 } std::cout << std::endl;
             }
         }
@@ -723,8 +726,8 @@ int main() {
     for(int i=0;i<kib512->b_size;i++) {
         for(int j=0;j<8;j++) {
             for(int k=0;k<8;k++) {
-                // std::cout << std::setfill('0') << std::setw(16) << std::hex
-                //           << kib512->manip_m[i][j][k] << "\t";
+                std::cout << std::setfill('0') << std::setw(16) << std::hex
+                          << kib512->manip_m[i][j][k] << "\t";
             }
         }
     }
