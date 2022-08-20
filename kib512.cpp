@@ -17,8 +17,6 @@
     using uint64_t = unsigned long long
 #endif
 
-template<size_t size> class Matrix;
-
 // Operators in Galois Field
 class GaloisFieldP {
     public:
@@ -43,7 +41,7 @@ class GaloisFieldP {
     }
     
     // assignment operator for integers
-    GaloisFieldP operator= (uint64_t &y) {
+    GaloisFieldP operator= (uint64_t y) {
         x = y%p;
         return *this;
     }
@@ -321,59 +319,6 @@ std::vector<GaloisFieldP> poly_mod(std::vector<GaloisFieldP> a,
     return a;
 }
 
-// only for square matrix multipication on GF(p) for same size matrices
-template<size_t size>
-class Matrix
-{
-    public:
-    GaloisFieldP **m1;
-    GaloisFieldP p;
-    GaloisFieldP **res;
-    
-    Matrix(uint64_t **matrix, uint64_t prime) {
-        m1 = nullptr;
-        m1 = new GaloisFieldP*[size];
-        for(size_t i=0;i<size;i++) {
-            m1[i] = new GaloisFieldP[size];
-            
-            // copy parameter matrix to operate on
-            for(size_t j=0;j<size;j++) {
-                m1[i][j] = GaloisFieldP(matrix[i][j],prime) % prime;
-            }
-        }
-        p.p = prime;
-    }
-    
-    // square matrix multipication for 2 2d matrices on GF(p)
-    Matrix operator* (const std::array<std::array<uint64_t,size>,size> m) {
-        res = nullptr;
-        res = new GaloisFieldP*[size];
-        for(size_t i=0;i<size;i++) {
-            res[i] = new GaloisFieldP[size];
-            for(size_t j=0;j<size;j++) {
-                res[i][j].p = p.p;  // change field sizes
-                for(size_t k=0;k<size;k++) {
-                    res[i][j] = res[i][j] + m1[k][j] * GaloisFieldP(m[i][k],p.p);
-                }
-            }
-        }
-        return *this;
-    }
-    
-    GaloisFieldP* operator[] (int64_t index) {
-        return res[index];
-    }
-    
-    // ~Matrix() {
-        // for(int i=0;i<size;i++) {
-            // delete[] res[i];
-            // delete[] m1[i];
-        // }
-        // delete[] res;
-        // delete[] m1;
-    // }
-};
-
 // Taha Canturk Kibnakamoto 64-bit Koblitz curve with prime field size
 struct Tckp64k1
 {
@@ -393,6 +338,75 @@ struct Tckp64k1
     const GaloisFieldP gx = 0x7143332d09966ea9ULL; // x coordinate of generator point
     const GaloisFieldP gy = 0xb5fbd04e6e22f933ULL; // y coordinate of generator point
     const GaloisFieldP h = 0x0000000000000001ULL; // co-factor
+};
+
+// only for square matrix multipication on GF(p) for same size matrices
+template<size_t size, typename curve_t>
+class Matrix
+{
+    public:
+    GaloisFieldP **m1;
+    GaloisFieldP p;
+    GaloisFieldP **res;
+    curve_t curve;
+    
+    Matrix(uint64_t **matrix) {
+        m1 = nullptr;
+        m1 = new GaloisFieldP*[size];
+        for(size_t i=0;i<size;i++) {
+            m1[i] = new GaloisFieldP[size];
+            
+            // copy parameter matrix to operate on
+            for(size_t j=0;j<size;j++) {
+                m1[i][j] = GaloisFieldP(matrix[i][j],curve.p.x) % curve.p;
+            }
+        }
+        p = curve.p;
+    }
+    
+    // square matrix multipication on 2d matrices on GF(p)
+    Matrix operator* (const std::array<std::array<uint64_t,size>,size> m) {
+        GaloisFieldP b_((uint64_t)curve.b.x,p.p);
+        std::array<GaloisFieldP,3> f = {curve.a,-b_,1};
+        res = nullptr;
+        res = new GaloisFieldP*[size];
+        // for(size_t i=0;i<size;i++) {
+        //     res[i] = new GaloisFieldP[size];
+        //     for(size_t j=0;j<size;j++) {
+        //         res[i][j].p = p.p;  // change field sizes
+        //         for(size_t k=0;k<size;k++) {
+        //             std::array<GaloisFieldP, 3> a = {0,m1[k][j],1};
+        //             std::array<GaloisFieldP, 3> b = {0,GaloisFieldP(m[i][k],p.p),1};
+        //             res[i][j] = res[i][j] + poly_mod<3>(poly_mul<3,3>(a,b),f)[1];
+        //         }
+        //     }
+        // }
+        for(size_t i=0;i<size;i++) {
+            res[i] = new GaloisFieldP[size];
+            for(size_t j=0;j<size;j++) {
+                res[i][j].p = p.p;  // change field sizes
+                for(size_t k=0;k<size;k++) {
+                    std::array<GaloisFieldP, 3> a = {curve.a, m1[k][j],1};
+                    std::array<GaloisFieldP, 3> b = {-b_,GaloisFieldP(m[i][k],p.p),1};
+                    res[i][j] = res[i][j] + poly_mod<3>(poly_mul<3,3>(a,b),f)[1];
+                }
+            }
+        }
+        return *this;
+    }
+    
+    GaloisFieldP* operator[] (int64_t index) {
+        return res[index];
+    }
+    
+    // ~Matrix() {
+        // for(int i=0;i<size;i++) {
+            // delete[] res[i];
+            // delete[] m1[i];
+        // }
+        // delete[] res;
+        // delete[] m1;
+    // }
 };
 
 // bitwise right-rotate
@@ -625,7 +639,7 @@ class Kib512 {
         
         // process on const_m for compression
         for(uint64_t i=0;i<b_size;i++) {
-            Matrix<8> new_manip_mi(manip_m[i], gf_p.p);
+            Matrix<8, Tckp64k1> new_manip_mi(manip_m[i]);
             n = manip_m[i][0][0]%8; // first value of manip_m[i], starting index
             s = manip_m[i][7][7]%8; // last value of manip_m[i], starting index
             for(int j=0;j<8;j++) {
@@ -637,7 +651,7 @@ class Kib512 {
             }
             
             // matrix multiplication with non-randomized shuffling on const_m
-            Matrix res = new_manip_mi * copy;
+            Matrix<8, Tckp64k1> res = new_manip_mi * const_m;
             for(int j=0;j<8;j++) {
                 for(int k=0;k<8;k++) {
                     std::cout << ", 0x" << std::setfill('0') << std::setw(16) << std::hex
