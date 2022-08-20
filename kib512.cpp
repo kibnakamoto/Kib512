@@ -638,6 +638,11 @@ class Kib512 {
         size_t n,s;
         
         // process on const_m for compression
+        // const_m is copied in a non-random re-shuffled way. The shuffling is
+        // manip_m[i]'s first and last index modulo 8 being the starting index
+        // of const_m, this way, the matrix multiplication is not reversable
+        // without knowing manip_m, since reversing a matrix is quite costly
+        // in terms of performance, brute-forcing won't be a viable way.
         for(uint64_t i=0;i<b_size;i++) {
             Matrix<8, Tckp64k1> new_manip_mi(manip_m[i]);
             n = manip_m[i][0][0]%8; // first value of manip_m[i], starting index
