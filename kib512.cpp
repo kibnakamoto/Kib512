@@ -646,12 +646,12 @@ class Kib512 {
                 n = (n+1)%8;
                 for(int k=0;k<8;k++) {
                     s = (s+1)%8;
-                    copy[j][k] = const_m[s][n];
+                    copy[j][k] = const_m[n][s];
                 }
             }
             
             // matrix multiplication with non-randomized shuffling on const_m
-            Matrix<8, Tckp64k1> res = new_manip_mi * const_m;
+            Matrix<8, Tckp64k1> res = new_manip_mi * copy;
             for(int j=0;j<8;j++) {
                 for(int k=0;k<8;k++) {
                     std::cout << ", 0x" << std::setfill('0') << std::setw(16) << std::hex
