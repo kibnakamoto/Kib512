@@ -16,10 +16,6 @@
     using uint64_t = unsigned long long
 #endif
 
-// re-generate generator point since the current point is an ineffective point
-// montgomery_ladder works on any 64-bit number that fits the requirements of the
-// Weierstrass Curve
-
 // Operators in Galois Field
 class GaloisFieldP {
     public:
@@ -604,6 +600,12 @@ class Kib512 {
                     // primes used for rotation and shifting
                     // chosen so that one big, one small one rotation is made each time
                     unsigned int p[4] = {37, 3, 59, 5};
+                    GaloisFieldP *p_inv = nullptr;
+                    p_inv = new GaloisFieldP[4];
+                    p_inv[0] = 0xb3e45306eb3e4507ULL;
+                    p_inv[1] = 0x5555555555555542ULL;
+                    p_inv[2] = 0xcbeea4e1a08ad8c4ULL;
+                    p_inv[3] = 0x666666666666664fULL;
                     
                     // matrix indexes are chosen within reason, +7,+6 is for
                     // length of matrix and +1 and +0 is for start of the message.
@@ -621,8 +623,10 @@ class Kib512 {
                     GaloisFieldP sigma3 = rr(tn2, p[1]) xor lr(tn3, p[2]) xor (tn4 << p[3]) |
                                           (tn1 << p[0]) % gf_p;
                     
+                    // TODO: replace division with multiplying with modular inverse
+                    
                     // use arithmetic addition for non-linearity
-                    manip_m[i][j][k] = (sigma0/p[k%4] +
+                    manip_m[i][j][k] = (sigma0*p_inv[k%4] +
                                         sigma1 + sigma2 + sigma3).x;
                 }
             }
@@ -731,8 +735,8 @@ int main() {
     for(int i=0;i<kib512->b_size;i++) {
         for(int j=0;j<8;j++) {
             for(int k=0;k<8;k++) {
-                // std::cout << std::setfill('0') << std::setw(16) << std::hex
-                //           << kib512->manip_m[i][j][k] << "\t";
+                std::cout << std::setfill('0') << std::setw(16) << std::hex
+                          << kib512->manip_m[i][j][k] << "\t";
             }
         }
     }
