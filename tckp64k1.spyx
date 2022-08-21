@@ -1,6 +1,6 @@
 # sagemath for calculating order of the curve and generator point
-B = 0x0000000000000000 # taken from SEC curves domain parameters
-A = 0x0000000000000007 # taken from SEC curves domain parameters
+B = 0x0000000000000007 # taken from SEC curves domain parameters
+A = 0x0000000000000000 # taken from SEC curves domain parameters
 p = 0xffffffffffffffc5
 
 F = GF(p)
@@ -11,6 +11,8 @@ print(f"E is {E}")    # please decomment
 
 ord = E.order()
 print(f"The order of E is:\n{ord}\nFactorized:\n{ord.factor()}")
+
+print(E.random_point())
 
 # calculate generator point
 print(E.gen(0))
