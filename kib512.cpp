@@ -6,7 +6,6 @@
 #include <sstream>
 #include <iomanip>
 #include <bit>
-#include <assert.h>
 #include <vector>
 
 #if !defined(UINT8_MAX)
@@ -16,6 +15,10 @@
 #elif !defined(UINT64_MAX)
     using uint64_t = unsigned long long
 #endif
+
+// re-generate generator point since the current point is an ineffective point
+// montgomery_ladder works on any 64-bit number that fits the requirements of the
+// Weierstrass Curve
 
 // Operators in Galois Field
 class GaloisFieldP {
@@ -322,21 +325,24 @@ std::vector<GaloisFieldP> poly_mod(std::vector<GaloisFieldP> a,
 // Taha Canturk Kibnakamoto 64-bit Koblitz curve with prime field size
 struct Tckp64k1
 {
+    /* curve equation: y^2 = x^3 + ax + b (mod p) */
+    
     const GaloisFieldP a = 0x0000000000000000ULL; // taken from SEC curves domain parameters
     const GaloisFieldP b = 0x0000000000000007ULL; // taken from SEC curves domain parameters
     
-    // generated without the use of SEC specifications on how to generate p and q
+    // p is generated without the use of SEC specifications on how to generate p and q
     // since that is generated randomly, there isn't a need to
     // verified as prime using Fermat's Little Theorem in GF(gf_p) where gf_p
     // denotes the potential largest unsigned 64-bit prime number
     const GaloisFieldP p = 0xffffffffffffffc5ULL; // largest unsigned 64-bit prime number
     
     // calculated with sagemath
-    // __uint128_t n = 0x100000001dc431000; // bigger than field size
+    const GaloisFieldP n = 0xffffffffffffffc6ULL; // order of curve
     
     // calculated with sagemath
-    const GaloisFieldP gx = 0x7143332d09966ea9ULL; // x coordinate of generator point
-    const GaloisFieldP gy = 0xb5fbd04e6e22f933ULL; // y coordinate of generator point
+    // generator point
+    const point_t G = std::make_pair(0x0dc2561d0fc35924ULL,0xc3790f12017191e9ULL);
+    
     const GaloisFieldP h = 0x0000000000000001ULL; // co-factor
 };
 
@@ -365,22 +371,13 @@ class Matrix
     }
     
     // square matrix multipication on 2d matrices on GF(p)
+    // uses polynomial multipication modulo x^a + x^-b + 1
+    // f(x) inspired from operations from modular square root
     Matrix operator* (const std::array<std::array<uint64_t,size>,size> m) {
         GaloisFieldP b_((uint64_t)curve.b.x,p.p);
         std::array<GaloisFieldP,3> f = {curve.a,-b_,1};
         res = nullptr;
         res = new GaloisFieldP*[size];
-        // for(size_t i=0;i<size;i++) {
-        //     res[i] = new GaloisFieldP[size];
-        //     for(size_t j=0;j<size;j++) {
-        //         res[i][j].p = p.p;  // change field sizes
-        //         for(size_t k=0;k<size;k++) {
-        //             std::array<GaloisFieldP, 3> a = {0,m1[k][j],1};
-        //             std::array<GaloisFieldP, 3> b = {0,GaloisFieldP(m[i][k],p.p),1};
-        //             res[i][j] = res[i][j] + poly_mod<3>(poly_mul<3,3>(a,b),f)[1];
-        //         }
-        //     }
-        // }
         for(size_t i=0;i<size;i++) {
             res[i] = new GaloisFieldP[size];
             for(size_t j=0;j<size;j++) {
@@ -446,7 +443,6 @@ inline point_t point_double(point_t p1, GaloisFieldP p, GaloisFieldP a) {
     x = std::get<0>(p1);
     y = std::get<1>(p1);
     GaloisFieldP __lambda = (GaloisFieldP(3,p.p)*(x*x) + a)*~(GaloisFieldP(2,p.p)*y);
-    std::cout << ~(GaloisFieldP(2,p.p)*y);
     GaloisFieldP xr = __lambda*__lambda - GaloisFieldP(2,p.p)*x;
     GaloisFieldP yr = __lambda*(x - xr) - y;
     return std::make_pair(xr, yr);
@@ -660,21 +656,30 @@ class Kib512 {
             // matrix multiplication with non-randomized shuffling on const_m
             // 8x8 matrix on curve tckp64k1
             Matrix<8, Tckp64k1> res = new_manip_mi * copy;
+            GaloisFieldP **result = res.res; // access Matrix.res
+            
+            // multiply the first 8 values of result matrix using the montgomery
+            // ladder, this is done because the first 8 values of the 8x8 matrix
+            // has the input message. this operation makes it secure using the
+            // tckp64k1 elliptic curve
+            for(int j=0;j<8;j++) {
+                result[0][j] = montgomery_ladder(curve.G,result[0][j].x,
+                                                 curve.p.x,curve.a.x).second;
+            }
+            
             for(int j=0;j<8;j++) {
                 for(int k=0;k<8;k++) {
                     std::cout << ", 0x" << std::setfill('0') << std::setw(16) << std::hex
-                              << res[j][k];
+                              << result[j][k];
                 } std::cout << std::endl;
             }
         }
     }
     
+    // T is either uint64_t* or std::string
     template<typename T>
     T hashstr(std::string input) {
-        // check if type of T is valid, then return hash
-        assert((typeid(T) != typeid(std::string) || typeid(T) !=
-                typeid(uint64_t*)) && "Kib512 hashstr:\t wrong type detected");
-        
+        // TODO: put this 3 lines to constructor
         // calculate hash
         kib512_prep(input);
         prec_kib512();
@@ -726,8 +731,8 @@ int main() {
     for(int i=0;i<kib512->b_size;i++) {
         for(int j=0;j<8;j++) {
             for(int k=0;k<8;k++) {
-                std::cout << std::setfill('0') << std::setw(16) << std::hex
-                          << kib512->manip_m[i][j][k] << "\t";
+                // std::cout << std::setfill('0') << std::setw(16) << std::hex
+                //           << kib512->manip_m[i][j][k] << "\t";
             }
         }
     }
