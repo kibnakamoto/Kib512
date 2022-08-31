@@ -513,9 +513,9 @@ class Kib512 {
     // galois field size
     GaloisFieldP gf_p = curve.p; // prime field size
     
-    Kib512(std::string input);
+    Kib512(std::string input); # declare constructor
     
-    ~Kib512();
+    ~Kib512(); # declare destructor
     
     void kib512_prep(std::string input)
     {
@@ -671,6 +671,13 @@ class Kib512 {
                                                  curve.p.x,curve.a.x).second;
             }
             
+			for(int j=0;j<8;j++) {
+				for(int k=0;k<8;k++) {
+					hash[k];
+				}
+			}
+	    
+	    
             for(int j=0;j<8;j++) {
                 for(int k=0;k<8;k++) {
                     std::cout << ", 0x" << std::setfill('0') << std::setw(16) << std::hex
