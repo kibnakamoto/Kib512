@@ -504,18 +504,22 @@ class Kib512 {
          0x277c0323eb636b90ULL}
     }};
     
-    mutable uint64_t hash[8] {
+    mutable GaloisFieldP hash[8] {
         0x5287173768046659ULL, 0x1388c1a81885db29ULL, 0xc582055c7b0f1a24ULL,
         0x9be22d058c2ae082ULL, 0xa36b2344c3b2e0d0ULL, 0x8b74c2c08074d4b1ULL,
         0x2a1c87eb1011bd80ULL, 0x64edcba54a4d0a5aULL
     };
+	
+	// primes used for rotation and shifting
+	// chosen so that one big, one small one rotation is made each time
+  	unsigned int p[4] = {37, 3, 59, 5};
     
     // galois field size
     GaloisFieldP gf_p = curve.p; // prime field size
     
-    Kib512(std::string input); # declare constructor
+    Kib512(std::string input); // declare constructor
     
-    ~Kib512(); # declare destructor
+    ~Kib512(); // declare destructor
     
     void kib512_prep(std::string input)
     {
@@ -593,20 +597,17 @@ class Kib512 {
             if(mmj%8==0) mmi++;
         }
         
+		GaloisFieldP *p_inv = nullptr;
+		p_inv = new GaloisFieldP[4];
+		p_inv[0] = 0xb3e45306eb3e4507ULL;
+		p_inv[1] = 0x5555555555555542ULL;
+		p_inv[2] = 0xcbeea4e1a08ad8c4ULL;
+		p_inv[3] = 0x666666666666664fULL;
+         
         // pre-compression. Get rid of extra padding
         for(uint64_t i=0;i<b_size;i++) {
             for(int j=1;j<8;j++) {
                 for(int k=0;k<8;k++) {
-                    // primes used for rotation and shifting
-                    // chosen so that one big, one small one rotation is made each time
-                    unsigned int p[4] = {37, 3, 59, 5};
-                    GaloisFieldP *p_inv = nullptr;
-                    p_inv = new GaloisFieldP[4];
-                    p_inv[0] = 0xb3e45306eb3e4507ULL;
-                    p_inv[1] = 0x5555555555555542ULL;
-                    p_inv[2] = 0xcbeea4e1a08ad8c4ULL;
-                    p_inv[3] = 0x666666666666664fULL;
-                    
                     // matrix indexes are chosen within reason, +7,+6 is for
                     // length of matrix and +1 and +0 is for start of the message.
                     
@@ -671,19 +672,46 @@ class Kib512 {
                                                  curve.p.x,curve.a.x).second;
             }
             
+			// temporary hash copy
+			GaloisFieldP *tmphcopy = hash;
+			uint64_t sc0,sc1,sc2,sc3;
+
 			for(int j=0;j<8;j++) {
+				// shift count
+				sc0 = p[j%4];
+				sc1 = p[(j+1)%4];
+				sc2 = p[(j+2)%4];
+				sc3 = p[(j+3)%4];
 				for(int k=0;k<8;k++) {
-					hash[k];
+					// for every j, update index of p so that every 8 value gets the same
+					// shift count. left-shift tmphcopy with 64-p[sc]. Add result to tmp0 for
+					// getting a result based on result as well as a non-linear method considering
+					// the use of xor's which are reversible
+					GaloisFieldP tmp0 = (tmphcopy[0] >> sc0) | (tmphcopy[1] << (64-sc0));
+					GaloisFieldP tmp1 = (tmphcopy[2] >> sc1) | (tmphcopy[3] << (64-sc1));
+					tmp1 xor_eq tmp0;
+					GaloisFieldP tmp2 = (tmphcopy[4] >> sc2) | (tmphcopy[5] << (64-sc2));
+					tmp2 xor_eq tmp1;
+					GaloisFieldP tmp3 = (tmphcopy[6] >> sc3) | (tmphcopy[7] << (64-sc3));
+					tmp3 xor_eq tmp2;
+					
+					// add tmphcopy to result and tmp3 which has all tmp[i]. For every 8th of the
+					// hash there are 4 tmp variables xor'ed and added to tmp hash copy
+					tmphcopy[k] += tmp3 + result[j][k];
 				}
 			}
-	    
-	    
-            for(int j=0;j<8;j++) {
-                for(int k=0;k<8;k++) {
-                    std::cout << ", 0x" << std::setfill('0') << std::setw(16) << std::hex
-                              << result[j][k];
-                } std::cout << std::endl;
-            }
+			std::cout << std::endl;
+	    	for(int j=0;j<8;j++) {
+				std::cout << std::hex << std::setfill('0') << std::setw(16) << tmphcopy[j];
+			}
+			std::cout << std::endl;
+	    	
+           // for(int j=0;j<8;j++) {
+           //      for(int k=0;k<8;k++) {
+           //          std::cout << ", 0x" << std::setfill('0') << std::setw(16) << std::hex
+           //                    << result[j][k];
+           //      } std::cout << std::endl;
+           //  }
         }
     }
     
