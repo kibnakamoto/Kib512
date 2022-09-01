@@ -674,59 +674,51 @@ class Kib512 {
                                                  curve.p.x,curve.a.x);
 			}
             
-			// temporary hash copy
-			GaloisFieldP *tmphcopy = hash;
+		    // declare shift counts
 			uint64_t sc0,sc1,sc2,sc3;
 
 			for(int j=1;j<8;j++) {
-				// shift count
+				// shift counts
 				sc0 = p[j%4];
 				sc1 = p[(j+1)%4];
 				sc2 = p[(j+2)%4];
 				sc3 = p[(j+3)%4];
 				for(int k=0;k<8;k++) {
 					/* for every j, update index of p so that every 8 value gets the same
-					 * shift count. left-shift tmphcopy with 64-p[sc]. Add result to tmp0 for
+					 * shift count. left-shift hash with 64-p[sc]. Add result to tmp0 for
 					 * use addition for non-linearity and xor for linearity
 					 * the result[0] isn't used since it has the plaintext, Instead,
 					 * ECC multiplication is used. Multiply with generator point of curve tckp64k1
 					 * this value is added to copy[j][k] * generator point.
 					 */
-					GaloisFieldP tmp0 = rr(tmphcopy[0], sc0) + (tmphcopy[1] >> (sc0)) + result[j][k];
-					GaloisFieldP tmp1 = rr(tmphcopy[2], sc1) + (tmphcopy[3] >> (sc1));
+					GaloisFieldP tmp0 = rr(hash[0], sc0) + (hash[1] >> (sc0)) + result[j][k];
+					GaloisFieldP tmp1 = rr(hash[2], sc1) + (hash[3] >> (sc1));
 					tmp1 xor_eq tmp0;
-					GaloisFieldP tmp2 = rr(tmphcopy[4], sc2) + (tmphcopy[5] >> (sc2));
+					GaloisFieldP tmp2 = rr(hash[4], sc2) + (hash[5] >> (sc2));
 					tmp2 xor_eq tmp1;
-					GaloisFieldP tmp3 = rr(tmphcopy[6], sc3) + (tmphcopy[7] >> (sc3));
+					GaloisFieldP tmp3 = rr(hash[6], sc3) + (hash[7] >> (sc3));
 					tmp3 xor_eq tmp2;
 
 					// ECC point addition with the first 8 results and multiplication with 
-					point_t sigma = point_add(montgomery_ladder(curve.G, tmp2.x,curve.p.x, curve.a.x),
+					point_t sigma = point_add(montgomery_ladder(curve.G, hash[k].x,curve.p.x, curve.a.x),
 											  muls[k], curve.p.x,curve.a.x);
 					
-					std::cout << "\nz: " << std::hex << std::setfill('0') << std::setw(16)<< tmp0;
-					std::cout << "\no: " << std::hex << std::setfill('0') << std::setw(16)<< tmp1;
-					std::cout << "\nt: " << std::hex << std::setfill('0') << std::setw(16)<< tmp2;
-					std::cout << "\nh: " << std::hex << std::setfill('0') << std::setw(16)<< tmp3;
-					std::cout << "\ns1: " << std::hex << std::setfill('0') << std::setw(16) << sigma.first;
-					std::cout << "\ns2: " << std::hex << std::setfill('0') << std::setw(16) << sigma.second;
-					
-					// add tmphcopy to result and tmp3 which has all tmp[i]. For every 8th of the
+					// add hash to result and tmp3 which has all tmp[i]. For every 8th of the
 					// hash there are 4 tmp variables xor'ed and added to tmp hash copy
 					// index starts from zero so that [0] isn't replaced with [1] on next line
-					tmphcopy[7] = tmphcopy[6] + sigma.second;
-					tmphcopy[6] = tmphcopy[5];
-					tmphcopy[5] = tmphcopy[4];
-					tmphcopy[4] = tmphcopy[3] + sigma.first;
-					tmphcopy[3] = tmphcopy[2];
-					tmphcopy[2] = tmphcopy[1];
-					tmphcopy[1] = tmphcopy[0];
-					tmphcopy[0] += tmp3;
+					hash[7] = hash[6] + sigma.second;
+					hash[6] = hash[5];
+					hash[5] = hash[4];
+					hash[4] = hash[3] + sigma.first;
+					hash[3] = hash[2];
+					hash[2] = hash[1];
+					hash[1] = hash[0];
+					hash[0] = tmp3;
+					std::cout << std::hex << std::setfill('0') << std::setw(16) << hash[0] << " - 2 -: ";
 				}
 			}
 			std::cout << std::endl;
 	    	for(int j=0;j<8;j++) {
-				hash[j] = tmphcopy[j];
 				std::cout << std::hex << std::setfill('0') << std::setw(16) << hash[j] << " ";
 			}
 			std::cout << std::endl;
@@ -786,7 +778,7 @@ Kib512::~Kib512() {
 int main(int argc, char **argv) {
     Kib512 *kib512 = new Kib512("input");
     // std::string in = "abcdefghqwertyuioplkjhgfdsazxcvbnm1234567890!@#$%^&*()\\/";
-    std::string in = "abcd";
+    std::string in = "abc";
     kib512->kib512_prep(in);
     kib512->prec_kib512();
     kib512->hash_kib512();
