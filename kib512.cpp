@@ -713,8 +713,8 @@ class Kib512 {
 					hash[3] = hash[2];
 					hash[2] = hash[1];
 					hash[1] = hash[0];
-					hash[0] = tmp3;
-					std::cout << std::hex << std::setfill('0') << std::setw(16) << hash[0] << " - 2 -: ";
+					hash[0] = tmp3
+					std::cout << std::hex << std::setfill('0') << std::setw(16) << hash[k] << "\t" << k << std::endl;
 				}
 			}
 			std::cout << std::endl;
