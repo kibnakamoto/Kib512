@@ -1,16 +1,5 @@
 import numpy as np
-import sys
-
-# 64-bit byteswap
-def bs64(x):
-    return np.uint64((x & np.uint64(0xff00000000000000)) >> np.uint64(56) |
-                     (x & np.uint64(0x00ff000000000000)) >> np.uint64(40) |
-                     (x & np.uint64(0x0000ff0000000000)) >> np.uint64(24) |
-                     (x & np.uint64(0x000000ff00000000)) >> np.uint64(8)  |
-                     (x & np.uint64(0x00000000ff000000)) << np.uint64(8)  |
-                     (x & np.uint64(0x0000000000ff0000)) << np.uint64(24) |
-                     (x & np.uint64(0x000000000000ff00)) << np.uint64(40) |
-                     (x & np.uint64(0x00000000000000ff)) << np.uint64(56))
+from copy import deepcopy
 
 # compression idea: use right rotate and left rotate unieqly so that values that
 # are changed do not interfere(the same bit shouldn't be both right rotated
@@ -20,15 +9,114 @@ def bs64(x):
 # if data is equal to zero. Insert a backdoor if possible... 
 
 # unsigned 64-bit bitwise right-rotate
-def rr(x: np.uint64(), n: int):
-    return (x >> n)|(x << (64-n)) & 0xffffffffffffffff
+def rr(x: int, n: int):
+    return ((x >> n)|(x << (64-n))%0xffffffffffffffc5)   # modulo is p of the tckp64k1 curve
 
-# unsigned 64-bit bitwise left-rotate
-def lr(x: np.uint64(), n: int):
-    return (x << n)|(x >> (64-n)) & 0xffffffffffffffff
+# unsigned 64-bit bitwise right-rotate
+def lr(x: int, n: int):
+    return ((x << n)%0xffffffffffffffc5|(x >> (64-n)))  # modulo is p of the tckp64k1 curve
+
+def point_add(xp, yp, xq, yq, p, a):
+    # equation for private key and pointG
+    # find lambda
+    if yp == yq or xp == xq:
+        __lambda = ((3 * (xp ** 2) + a) * pow(2 * yp, -1,
+                                              p)) % p
+    else:
+        __lambda = ((yq - yp) * pow(xq - xp, -1, p)) % p
+    xr = (__lambda ** 2 - xp - xq) % p
+    yr = (__lambda * (xp - xr) - yp) % p
+    return (xr % p, yr % p)
+
+def point_double(x, y, p, a):
+    __lambda = ((3 * (x ** 2) + a) * pow(2 * y, -1, p)) % p
+    xr = __lambda ** 2 - 2 * x
+
+    # use ys's negative values
+    yr = __lambda * (x - xr) - y
+    return (xr % p, yr % p)
+
+
+def montgomery_ladder(pointG, prikey, p, a):
+    r0 = list(pointG)
+    r1 = point_double(r0[0], r0[1], p, a)
+    bits = bin(prikey)[3:]
+    for i in bits:
+        if i == '0':
+            r1 = point_add(r0[0], r0[1], r1[0],
+                           r1[1], p, a)
+            r0 = point_double(r0[0], r0[1], p, a)
+        else:
+            r0 = point_add(r0[0], r0[1], r1[0],
+                           r1[1], p, a)
+            r1 = point_double(r1[0], r1[1], p, a)
+    return (r0[0], r0[1])
+
+""" polynomial multiplication """
+def poly_mul(a, b, p):
+    alength,blength = len(a),len(b)
+    lst = [0]*(alength+blength-1)
+    for i in range(alength):
+        for j in range(blength):
+            lst[i+j] = (a[i] * b[j] + lst[i+j]) % p
+    return lst
+
+""" polynomial modulo """
+def poly_mod(a, f, p):
+    lenf = len(f)
+    if lenf < 2:
+        raise ValueError("f(x) smaller than 2")
+
+    while len(a) >= lenf:
+        if a[-1] != 0:
+            for i in range(lenf, 1, -1):
+                a[-i] = (a[-i] - a[-1] * f[-i]) % p
+        a = a[0:len(a) - 1]
+    return a
+
+class Tckp64k1:
+    def __init__(self):
+        self.a = 0x0000000000000000  # taken from SEC Koblitz curves domain parameters
+        self.b = 0x0000000000000007  # taken from SEC Koblitz curves domain parameters
+
+        # p is generated without the use of SEC specifications on how to generate p and q
+        # since that is generated randomly, there isn't a need to
+        # verified as prime using Fermat's Little Theorem in GF(gf_p) where gf_p
+        # denotes the potential largest unsigned 64-bit prime number
+        self.p = 0xffffffffffffffc5  # largest unsigned 64-bit prime number
+
+        # calculated with sagemath
+        self.n = 0xffffffffffffffc6  # order of curve
+
+        # calculated with sagemath
+        # generator point
+        self.G = (0x0dc2561d0fc35924, 0xc3790f12017191e9)
+        self.h = 0x0000000000000001  # co-factor
+
+# only for square matrix multipication on GF(p) for same size matrices
+class Matrix:
+    def __init__(self, m, curve, size):
+        self.m = m
+        self.curve = curve
+        self.res = [[] for i in range(size)]
+        self.size = size
+
+    # square matrix multipication on 2d matrices on GF(p)
+    # uses polynomial multipication modulo x^a + x^-b + 1
+    # f(x) inspired from operations from modular square root
+    def __mul__(self, m2):
+        f = [self.curve.a, -self.curve.b, 1]
+        for i in range(self.size):
+            for j in range(self.size):
+                for k in range(self.size):
+                    a = [self.curve.a, self.m[k][j], 1]
+                    b = [-self.curve.b, (m2[i][k], self.curve.p), 1]
+                    self.res[i,j] = (self.res[i,j] + poly_mod(poly_mul(a, b, self.curve.p),
+                                                              f, self.curve.p)[1]) % self.curve.p
+        return self
 
 class Kib512:
-    CONST_MATRIX = [
+    CONST_M = [
         [0x159a300c24f5dc1e, 0x178f1324ac498bfc, 0x10e55f6926814653,
          0x1963cf80d6276ccc,0x10980aa9695d807a, 0x1703f56bbe1f7f5e,
          0x16eb052c4abc81fe, 0x1f190bb16583b88f], [0x1d6d15eb483d1a05,
@@ -53,20 +141,26 @@ class Kib512:
          0x277c0323eb636b90]
     ]
     
-    hash_ = {
+    H = [
         0x5287173768046659, 0x1388c1a81885db29, 0xc582055c7b0f1a24,
         0x9be22d058c2ae082, 0xa36b2344c3b2e0d0, 0x8b74c2c08074d4b1,
         0x2a1c87eb1011bd80, 0x64edcba54a4d0a5a
-    }
-    
-    
-    """ pre-processing"""
+    ]
+
+    def __init__(self):
+        # primes used for rotation and shifting
+        # chosen so that one big, one small one rotation is made each time
+        self.p = (37, 3, 59, 5)
+        self.curve = Tckp64k1()
+        self.gf_p = self.curve.p
+
+    """ pre-processing """
     def prep_kib512(self, inp):
         length = len(inp)
         padlen = (((512-((length*8)+1)-128) % 512)-7)//8
         
         # matrix column height
-        self.matrix_colh = (padlen + length + 17)//8;
+        self.matrix_colh = (padlen + length + 17)//8
         
         self.matrix = np.eye(8, self.matrix_colh) # 2-d matrix
         inp+=chr(0x90) # add delimeter after end of data
@@ -76,7 +170,7 @@ class Kib512:
         for i in range(8):
             for j in range(self.matrix_colh):
                 self.matrix[i,j] = arr[j+i*self.matrix_colh]
-        
+
         return self.matrix
     
     """ pre-compression """
@@ -93,46 +187,62 @@ class Kib512:
                 # add matrix values while avoiding repetition of values
                 for k in range(8):
                     temp |= np.uint64(self.matrix[i,k+j*8]) << np.uint64(56-k*8)
-                
-                print(hex(temp)[2:])
-                # data in 3-d matrix has to be big-endian
-                if(sys.byteorder[0] == 'l'):
-                    self.manip_m[mmi,0,mmj] = np.uint64(bs64(temp & 0xffffffffffffffff))
-                else:
-                    self.manip_m[mmi,0,mmj] = np.uint64(temp & 0xffffffffffffffff)
+                self.manip_m[mmi,0,mmj] = np.uint64(temp & 0xffffffffffffffff)
+
                 mmj = np.int32((mmj+1)%8)
                 
-            if mmj%8==0:
-                mmi+=np.uint64(1)
-        
+            if mmj%8 == 0:
+                mmi += np.uint64(1)
+
+        # modular inverse of p
+        inv_p = (0xb3e45306eb3e4507, 0x5555555555555542, 0xcbeea4e1a08ad8c4, 0x666666666666664f)
+
         for i in range(self.block_count):
-            for j in range(1,8):
+            for j in range(1, 8):
                 for k in range(8):
                     # get the first values from the 2d matrix as the value to generate
                     # the row values if you consider that this matrix has stacked
-                    # rows and colums. Test until values seem like they have zero
+                    # rows and columns. Test until values seem like they have zero
                     # patters and seem completely random
-                    
-                    # values that is used to generate rest of the matrix
-                    temp = self.manip_m[i,j-1,k]
-                    self.manip_m[i,j,k]
 
-        for i in range(self.block_count):
-            for j in range(1,8):
-                for k in range(8):
-                    # print(hex(self.manip_m[i,j,k])[2:])
-                    pass
-        
+                    # matrix indexes are chosen within reason, +7,+6 is for
+                    # length of matrix and +1 and +0 is for start of the message.
+                    tn4 = deepcopy(int(self.manip_m[(i + self.block_count) % self.block_count][j - 1][(k + 7) % 8]))
+                    tn3 = deepcopy(int(self.manip_m[(i + self.block_count) % self.block_count][j - 1][(k + 6) % 8]))
+                    tn2 = deepcopy(int(self.manip_m[i][j - 1][(k + 1) % 8]))
+                    tn1 = deepcopy(int(self.manip_m[i][j - 1][k]))
+
+                    sigma0 = (rr(tn1, self.p[0]) ^ rr(tn2, self.p[1]) ^ (tn3 << self.p[2])%self.gf_p |
+                             (tn4 << self.p[3])%self.gf_p) % self.gf_p
+                    sigma1 = (rr(tn4, self.p[3]) ^ lr(tn1, self.p[0]) ^ (tn2 << self.p[1])%self.gf_p |
+                             (tn3 << self.p[2])%self.gf_p) % self.gf_p
+                    sigma2 = (rr(tn3, self.p[2]) ^ lr(tn4, self.p[3]) ^ (tn1 << self.p[0])%self.gf_p |
+                             (tn2 << self.p[1])%self.gf_p) % self.gf_p
+                    sigma3 = (rr(tn2, self.p[1]) ^ lr(tn3, self.p[2]) ^ (tn4 << self.p[3])%self.gf_p |
+                             (tn1 << self.p[0])%self.gf_p) % self.gf_p
+
+                    # use arithmetic addition for non-linearity
+                    self.manip_m[i,j,k] = (((sigma0*inv_p[k%4])%self.gf_p) +
+                                           sigma1 + sigma2 + sigma3) % self.gf_p
         return self.manip_m
-    
+
+    # 6944656592447467927
+
+    # 4485090721597411290
+    # 4503175483888135903
+    # 15523775387458234354
+    # 4485090716634474495
+    # 4485090716634474495
+
     """ compression function """
-    def comp_kib512(self):
+    def hash_kib512(self):
         pass
     
     def __call__(self):
-        pass
+        return self.H
 
-inp = "abcdefghqwertyuioplkjhgfdsazxcvbnm1234567890!@#$%^&*()\\/"
+# inp = "abcdefghqwertyuioplkjhgfdsazxcvbnm1234567890!@#$%^&*()\\/"
+inp = "abc"
 kib512 = Kib512()
 kib512.prep_kib512(inp)
 kib512.prec_kib512()
