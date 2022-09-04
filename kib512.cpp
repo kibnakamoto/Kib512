@@ -671,7 +671,7 @@ class Kib512 {
             // tckp64k1 elliptic curve
 			for(int j=0;j<8;j++) {
 				muls[j] = montgomery_ladder(curve.G,result[0][j].x,
-                                                 curve.p.x,curve.a.x);
+                                            curve.p.x,curve.a.x);
 			}
             
 		    // declare shift counts
@@ -691,12 +691,12 @@ class Kib512 {
 					 * ECC multiplication is used. Multiply with generator point of curve tckp64k1
 					 * this value is added to copy[j][k] * generator point.
 					 */
-					GaloisFieldP tmp0 = rr(hash[0], sc0) + (hash[1] >> (sc0)) + result[j][k];
-					GaloisFieldP tmp1 = rr(hash[2], sc1) + (hash[3] >> (sc1));
+					GaloisFieldP tmp0 = rr(hash[0], sc0) + (hash[1] >> sc0) + result[j][k];
+					GaloisFieldP tmp1 = rr(hash[2], sc1) + (hash[3] >> sc1);
 					tmp1 xor_eq tmp0;
-					GaloisFieldP tmp2 = rr(hash[4], sc2) + (hash[5] >> (sc2));
+					GaloisFieldP tmp2 = rr(hash[4], sc2) + (hash[5] >> sc2);
 					tmp2 xor_eq tmp1;
-					GaloisFieldP tmp3 = rr(hash[6], sc3) + (hash[7] >> (sc3));
+					GaloisFieldP tmp3 = rr(hash[6], sc3) + (hash[7] >> sc3);
 					tmp3 xor_eq tmp2;
 
 					// ECC point addition with the first 8 results and multiplication with 
