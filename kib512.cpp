@@ -623,9 +623,7 @@ class Kib512 {
                                           (tn2 << p[1]) % gf_p;
                     GaloisFieldP sigma3 = rr(tn2, p[1]) xor lr(tn3, p[2]) xor (tn4 << p[3]) |
                                           (tn1 << p[0]) % gf_p;
-                    
-                    // TODO: replace division with multiplying with modular inverse
-                    
+
                     // use arithmetic addition for non-linearity
                     manip_m[i][j][k] = (sigma0*p_inv[k%4] +
                                         sigma1 + sigma2 + sigma3).x;
@@ -648,9 +646,11 @@ class Kib512 {
         // in terms of performance, brute-forcing won't be a viable way.
         for(uint64_t i=0;i<b_size;i++) {
             Matrix<8, Tckp64k1> new_manip_mi(manip_m[i]);
+            GaloisFieldP h_copy[8];  // create copy of hash
             n = manip_m[i][0][0]%8; // first value of manip_m[i], starting index
             s = manip_m[i][7][7]%8; // last value of manip_m[i], starting index
             for(int j=0;j<8;j++) {
+                h_copy[j] = hash[j];
                 n = (n+1)%8;
                 for(int k=0;k<8;k++) {
                     s = (s+1)%8;
@@ -713,51 +713,22 @@ class Kib512 {
 					hash[3] = hash[2];
 					hash[2] = hash[1];
 					hash[1] = hash[0];
-					hash[0] = tmp3
-					std::cout << std::hex << std::setfill('0') << std::setw(16) << hash[k] << "\t" << k << std::endl;
+					hash[0] = tmp3;
 				}
 			}
-			std::cout << std::endl;
 	    	for(int j=0;j<8;j++) {
-				std::cout << std::hex << std::setfill('0') << std::setw(16) << hash[j] << " ";
+	    	    hash[j] += h_copy[j];
 			}
-			std::cout << std::endl;
-	    	
-           // for(int j=0;j<8;j++) {
-           //      for(int k=0;k<8;k++) {
-           //          std::cout << ", 0x" << std::setfill('0') << std::setw(16) << std::hex
-           //                    << result[j][k];
-           //      } std::cout << std::endl;
-           //  }
-        }
-    }
-    
-    // T is either uint64_t* or std::string
-    template<typename T>
-    T hashstr(std::string input) {
-        // TODO: put this 3 lines to constructor
-        // calculate hash
-        kib512_prep(input);
-        prec_kib512();
-        hash_kib512();
-        
-        // return hash as requested data type
-        if(typeid(T) == typeid(std::string)) {
-            std::stringstream ss;
-            for(int i=0;i<8;i++) {
-                ss << std::setfill('0') << std::setw(16) << std::hex << hash[i];
-            }
-            return ss.str();
-        }
-        else {
-            return hash;
         }
     }
 };
 
 // define constructor
 Kib512::Kib512(std::string input) {
-    
+    // calculate hash
+    kib512_prep(input);
+    prec_kib512();
+    hash_kib512();
 }
 
 // define destructor
@@ -776,22 +747,27 @@ Kib512::~Kib512() {
 }
 
 int main(int argc, char **argv) {
-    Kib512 *kib512 = new Kib512("input");
-    // std::string in = "abcdefghqwertyuioplkjhgfdsazxcvbnm1234567890!@#$%^&*()\\/";
-    std::string in = "abc";
-    kib512->kib512_prep(in);
-    kib512->prec_kib512();
-    kib512->hash_kib512();
-    
-    std::cout << "\n\n";
-    for(int i=0;i<kib512->b_size;i++) {
-        for(int j=0;j<8;j++) {
-            for(int k=0;k<8;k++) {
-                std::cout << std::setfill('0') << std::setw(16) << std::hex
-                          << kib512->manip_m[i][j][k] << "\t";
-            }
+    std::string in = "";
+    if (argc == 1) {
+        in = "abc";
+        Kib512 kib512_hash = Kib512(in);
+        GaloisFieldP *hash = kib512_hash.hash;
+        std::cout << "\n\nhash " << in << ":";
+        for(int i=0;i<8;i++) {
+            std::cout << std::hex << hash[i] << " ";
         }
+    } else {
+        for(int i=1;i<argc;i++) {
+            in += std::string(argv[i]);
+        }
+        Kib512 kib512_hash = Kib512(in);
+        GaloisFieldP *hash = kib512_hash.hash;
+        std::cout << "\n\nhash " << in << ":\n";
+        for(int i=0;i<8;i++) {
+            std::cout << std::setw(16) << std::setfill('0') << std::hex << hash[i] << " ";
+        }
+        std::cout << std::endl;
     }
-    std::cout << "\n\n" << std::hex << in.length();
+
     return 0;
 }
