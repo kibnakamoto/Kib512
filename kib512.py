@@ -11,13 +11,12 @@ from copy import deepcopy
 
 # unsigned 64-bit bitwise right-rotate
 def rr(x: int, n: int):
-    return ((x >> n) | (x << (64 - n)) % 0xffffffffffffffc5)  # modulo is p of the tckp64k1 curve
+    return (x >> n) | (x << (64 - n)) % 0xffffffffffffffc5  # modulo is p of the tckp64k1 curve
 
 
 # unsigned 64-bit bitwise right-rotate
 def lr(x: int, n: int):
-    return ((x << n) % 0xffffffffffffffc5 | (x >> (64 - n)))  # modulo is p of the tckp64k1 curve
-
+    return (x << n)%0xffffffffffffffc5 | (x >> (64 - n))  # modulo is p of the tckp64k1 curve
 
 def point_add(xp, yp, xq, yq, p, a):
     # equation for private key and pointG
@@ -31,7 +30,6 @@ def point_add(xp, yp, xq, yq, p, a):
     yr = (__lambda * (xp - xr) - yp) % p
     return (xr % p, yr % p)
 
-
 def point_double(x, y, p, a):
     __lambda = ((3 * (x ** 2) + a) * pow(2 * y, -1, p)) % p
     xr = __lambda ** 2 - 2 * x
@@ -39,7 +37,6 @@ def point_double(x, y, p, a):
     # use ys's negative values
     yr = __lambda * (x - xr) - y
     return (xr % p, yr % p)
-
 
 def montgomery_ladder(pointG, prikey, p, a):
     r0 = list(pointG)
@@ -58,20 +55,16 @@ def montgomery_ladder(pointG, prikey, p, a):
 
 
 """ polynomial multiplication """
-
-
 def poly_mul(a, b, p):
     alength, blength = len(a), len(b)
     lst = [0] * (alength + blength - 1)
     for i in range(alength):
         for j in range(blength):
-            lst[i + j] = (a[i] * b[j] + lst[i + j]) % p
+            lst[i + j] = ((a[i] * b[j])%p + lst[i + j]) % p
     return lst
 
 
 """ polynomial modulo """
-
-
 def poly_mod(a, f, p):
     lenf = len(f)
     if lenf < 2:
@@ -105,7 +98,7 @@ class Tckp64k1:
         self.h = 0x0000000000000001  # co-factor
 
 
-# only for square matrix multipication on GF(p) for same size matrices
+# only for square matrix multiplication on GF(p) for same size matrices
 class Matrix:
     def __init__(self, m, curve, size):
         self.m = m
@@ -121,44 +114,15 @@ class Matrix:
         for i in range(self.size):
             for j in range(self.size):
                 for k in range(self.size):
-                    a = [self.curve.a, self.m[k][j], 1]
-                    b = [-self.curve.b, (m2[i][k], self.curve.p), 1]
-                    self.res[i, j] = (self.res[i, j] + poly_mod(poly_mul(a, b, self.curve.p),
-                                                                f, self.curve.p)[1]) % self.curve.p
+                    a = [self.curve.a, int(self.m[k][j]), 1]
+                    b = [-self.curve.b, int(m2[i][k]), 1]
+                    print(poly_mul(a, b, self.curve.p))
+                    self.res[i][j] = int(self.res[i][j] + poly_mod(poly_mul(a, b, self.curve.p),
+                                                                   f, self.curve.p)[1]) % self.curve.p
         return self
 
 
 class Kib512:
-    CONST_M = [
-        [0x159a300c24f5dc1e, 0x178f1324ac498bfc, 0x10e55f6926814653,
-         0x1963cf80d6276ccc, 0x10980aa9695d807a, 0x1703f56bbe1f7f5e,
-         0x16eb052c4abc81fe, 0x1f190bb16583b88f], [0x1d6d15eb483d1a05,
-         0x1e2c7d2c722534b7, 0x14dcbefdb2afe52d, 0xf5fbc705a80df745,
-         0xe1803d026daf382f, 0x4817a3bcb90fa1de, 0x3b8d9167a61165bd,
-         0x400b71315483aecf], [0x7e253caa1049536c, 0x7143a810657de4e0,
-         0xba3d16917c91aae3, 0x249b4da86d970a00, 0x290ffdedae0a1c66,
-         0x8d490ccfccd45ebb, 0x1852f3c77fae1cb7, 0x8f078d043c3be329],
-        [0x568d492cc5140ae4, 0x1cd5bbf83190c484, 0x99d177432a40d119,
-         0x1f21998dc8c9145e, 0x560d95c1d691bf3f, 0x57131d9cde1633e5,
-         0xcccd035627a53b51, 0x13d653d8c3ae0192], [0x5d1e80c0123206a1,
-         0x91b1b3f312ac1be8, 0x19bc3eed09a866a2, 0x29ed711bc0303fb1,
-         0x35fa6009ed810bd6, 0x69a90fb1b95d63ae, 0x38bedd43ad759c34,
-         0xa787e2edc8133e84], [0x552c119614a1f4e5, 0x68d39af3ec9b831f,
-         0x3996ac49f898e965, 0x8d79f80825eb64f1, 0x5babe19fdfe4ec70,
-         0x7aa6a18653c9a0cc, 0x510e3b69d44d759a, 0x3486650c8e18c529],
-        [0x2b2b4051acc6e9a5, 0x49a9817e3d56ff74, 0xc6fd82e30671aeb5,
-         0x20be895e589409fd, 0xd8adec17910a1d4f, 0x18882870301f5a0b,
-         0x225cb56188423cf3, 0x4b61cc25258ea5c8], [0x63f68eef219e6c01,
-         0x7c29a354966d3f55, 0x1cf4c5f3b98ce4de, 0x1476b731259de5f8,
-         0x73642b2ec6c2a44b, 0x407adff58f6e054c, 0x811f7cbc6a7e08c7,
-         0x277c0323eb636b90]
-    ]
-
-    H = [
-        0x5287173768046659, 0x1388c1a81885db29, 0xc582055c7b0f1a24,
-        0x9be22d058c2ae082, 0xa36b2344c3b2e0d0, 0x8b74c2c08074d4b1,
-        0x2a1c87eb1011bd80, 0x64edcba54a4d0a5a
-    ]
     """ default class initializer """
     def __init__(self):
         # primes used for rotation and shifting
@@ -166,6 +130,36 @@ class Kib512:
         self.p = (37, 3, 59, 5)
         self.curve = Tckp64k1()
         self.gf_p = self.curve.p
+        self.CONST_M = [
+            [0x159a300c24f5dc1e, 0x178f1324ac498bfc, 0x10e55f6926814653,
+             0x1963cf80d6276ccc, 0x10980aa9695d807a, 0x1703f56bbe1f7f5e,
+             0x16eb052c4abc81fe, 0x1f190bb16583b88f], [0x1d6d15eb483d1a05,
+             0x1e2c7d2c722534b7, 0x14dcbefdb2afe52d, 0xf5fbc705a80df745,
+             0xe1803d026daf382f, 0x4817a3bcb90fa1de, 0x3b8d9167a61165bd,
+             0x400b71315483aecf], [0x7e253caa1049536c, 0x7143a810657de4e0,
+             0xba3d16917c91aae3, 0x249b4da86d970a00, 0x290ffdedae0a1c66,
+             0x8d490ccfccd45ebb, 0x1852f3c77fae1cb7, 0x8f078d043c3be329],
+            [0x568d492cc5140ae4, 0x1cd5bbf83190c484, 0x99d177432a40d119,
+             0x1f21998dc8c9145e, 0x560d95c1d691bf3f, 0x57131d9cde1633e5,
+             0xcccd035627a53b51, 0x13d653d8c3ae0192], [0x5d1e80c0123206a1,
+             0x91b1b3f312ac1be8, 0x19bc3eed09a866a2, 0x29ed711bc0303fb1,
+             0x35fa6009ed810bd6, 0x69a90fb1b95d63ae, 0x38bedd43ad759c34,
+             0xa787e2edc8133e84], [0x552c119614a1f4e5, 0x68d39af3ec9b831f,
+             0x3996ac49f898e965, 0x8d79f80825eb64f1, 0x5babe19fdfe4ec70,
+             0x7aa6a18653c9a0cc, 0x510e3b69d44d759a, 0x3486650c8e18c529],
+            [0x2b2b4051acc6e9a5, 0x49a9817e3d56ff74, 0xc6fd82e30671aeb5,
+             0x20be895e589409fd, 0xd8adec17910a1d4f, 0x18882870301f5a0b,
+             0x225cb56188423cf3, 0x4b61cc25258ea5c8], [0x63f68eef219e6c01,
+             0x7c29a354966d3f55, 0x1cf4c5f3b98ce4de, 0x1476b731259de5f8,
+             0x73642b2ec6c2a44b, 0x407adff58f6e054c, 0x811f7cbc6a7e08c7,
+             0x277c0323eb636b90]
+        ]
+
+        self.H = [
+            0x5287173768046659, 0x1388c1a81885db29, 0xc582055c7b0f1a24,
+            0x9be22d058c2ae082, 0xa36b2344c3b2e0d0, 0x8b74c2c08074d4b1,
+            0x2a1c87eb1011bd80, 0x64edcba54a4d0a5a
+        ]
 
     """ pre-processing """
     def prep_kib512(self, inp):
@@ -249,21 +243,27 @@ class Kib512:
         # in terms of performance, brute-forcing won't be a viable way.
         for i in range(self.block_count):
             new_manip_mi = Matrix(self.manip_m[i], self.curve, 8)
-            n = int(self.manip_m[i, 0, 0] % 8)  # first value of manip_m[i], starting index
-            s = int(self.manip_m[i, 7, 7] % 8)  # last value of manip_m[i], starting index
+            n = int(self.manip_m[i, 0, 0]) % 8  # first value of manip_m[i], starting index
+            s = int(self.manip_m[i, 7, 7]) % 8  # last value of manip_m[i], starting index
             for j in range(8):
                 n = (n + 1) % 8
                 for k in range(8):
                     s = (s + 1) % 8
-                    copy[j][k] = self.CONST_M[n][s]
+                    copy[j][k] = deepcopy(self.CONST_M[n][s])
             res = (new_manip_mi * copy).res
             muls = []
             for j in range(8):
-                muls.append(montgomery_ladder(self.curve.G, res[0][j], self.curve.p, self.curve.a))
+                muls.append(montgomery_ladder(self.curve.G, int(res[0][j]), self.curve.p, self.curve.a))
 
             for j in range(8):
+                for k in range(8):
+                    print(hex(res[j][k])[2:])
+                    # pass
+
+            for j in range(1,8):
                 # shift counts
                 sc0, sc1, sc2, sc3 = self.p[j % 4], self.p[(j + 1) % 4], self.p[(j + 2) % 4], self.p[(j + 3) % 4]
+
                 for k in range(8):
                     # for every j, update index of p so that every 8 value gets the same
                     # shift count. left-shift hash with 64-p[sc]. Add result to tmp0 for
@@ -271,14 +271,14 @@ class Kib512:
                     # the result[0] isn't used since it has the plaintext, Instead,
                     # ECC multiplication is used. Multiply with generator point of curve tckp64k1
                     # this value is added to copy[j][k] * generator point.
-                    tmp0 = (rr(self.H[0], sc0) + ((self.H[1] >> sc0) + res[j][k]) % self.gf_p) % self.gf_p
+                    tmp0 = (rr(self.H[0], sc0) + ((self.H[1] >> sc0) + int(res[j][k])) % self.gf_p) % self.gf_p
                     tmp1 = (rr(self.H[2], sc1) + (self.H[3] >> sc1)) % self.gf_p
                     tmp1 ^= tmp0
                     tmp2 = (rr(self.H[4], sc2) + (self.H[5] >> sc2)) % self.gf_p
                     tmp2 ^= tmp1
                     tmp3 = (rr(self.H[6], sc3) + (self.H[7] >> sc3)) % self.gf_p
                     tmp3 ^= tmp2
-
+                    # print(hex(tmp0)[2:])
                     # ECC point addition with the first 8 results and multiplication with
                     mul = montgomery_ladder(self.curve.G, self.H[k], self.curve.p, self.curve.a)
                     sigma = point_add(mul[0], mul[1], muls[k][0], muls[k][1], self.curve.p, self.curve.a)
@@ -286,15 +286,17 @@ class Kib512:
                     # add hash to result and tmp3 which has all tmp[i]. For every 8th of the
                     # hash there are 4 tmp variables xor'ed and added to tmp hash copy
                     # index starts from zero so that [0] isn't replaced with [1] on next line
-                    self.H[7] = self.H[6] + sigma[1]
+                    self.H[7] = (self.H[6] + sigma[1]) % self.gf_p
                     self.H[6] = self.H[5]
                     self.H[5] = self.H[4]
-                    self.H[4] = self.H[3] + sigma[0]
+                    self.H[4] = (self.H[3] + sigma[0]) % self.gf_p
                     self.H[3] = self.H[2]
                     self.H[2] = self.H[1]
                     self.H[1] = self.H[0]
                     self.H[0] = tmp3
-
+                    # print(hex(self.H[k])[2:].zfill(16), end=' ')
+                # print("]")
+            # print("]")
 
     def __call__(self):
         return self.H
@@ -306,3 +308,5 @@ kib512 = Kib512()
 kib512.prep_kib512(inp)
 kib512.prec_kib512()
 kib512.hash_kib512()
+for i in range(8):
+    print(hex(kib512.H[i])[2:], end=' ')
