@@ -116,7 +116,6 @@ class Matrix:
                 for k in range(self.size):
                     a = [self.curve.a, int(self.m[k][j]), 1]
                     b = [-self.curve.b, int(m2[i][k]), 1]
-                    print(poly_mul(a, b, self.curve.p))
                     self.res[i][j] = int(self.res[i][j] + poly_mod(poly_mul(a, b, self.curve.p),
                                                                    f, self.curve.p)[1]) % self.curve.p
         return self
@@ -231,7 +230,6 @@ class Kib512:
                                              sigma1 + sigma2 + sigma3) % self.gf_p
 
     """ compression function """
-
     def hash_kib512(self):
         copy = [[0] * 8 for i in range(8)]
 
@@ -243,6 +241,7 @@ class Kib512:
         # in terms of performance, brute-forcing won't be a viable way.
         for i in range(self.block_count):
             new_manip_mi = Matrix(self.manip_m[i], self.curve, 8)
+            self.h_copy = deepcopy(self.H) # create copy of hash
             n = int(self.manip_m[i, 0, 0]) % 8  # first value of manip_m[i], starting index
             s = int(self.manip_m[i, 7, 7]) % 8  # last value of manip_m[i], starting index
             for j in range(8):
@@ -254,11 +253,6 @@ class Kib512:
             muls = []
             for j in range(8):
                 muls.append(montgomery_ladder(self.curve.G, int(res[0][j]), self.curve.p, self.curve.a))
-
-            for j in range(8):
-                for k in range(8):
-                    print(hex(res[j][k])[2:])
-                    # pass
 
             for j in range(1,8):
                 # shift counts
@@ -294,9 +288,9 @@ class Kib512:
                     self.H[2] = self.H[1]
                     self.H[1] = self.H[0]
                     self.H[0] = tmp3
-                    # print(hex(self.H[k])[2:].zfill(16), end=' ')
-                # print("]")
-            # print("]")
+            # add hash copy initialized ub beggining of loop to hash
+            for j in range(8):
+                self.H[j] = (self.H[j] + self.h_copy[j]) % self.gf_p
 
     def __call__(self):
         return self.H
@@ -309,4 +303,4 @@ kib512.prep_kib512(inp)
 kib512.prec_kib512()
 kib512.hash_kib512()
 for i in range(8):
-    print(hex(kib512.H[i])[2:], end=' ')
+    print(hex(kib512.H[i])[2:].zfill(16), end='')
