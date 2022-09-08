@@ -553,12 +553,6 @@ class Kib512 {
                 matrix[r][c] = (uint8_t)input[r*m_ch+c]; // input ordered as row
             }
         }
-        
-        // for(int r=0;r<8;r++) {
-        //     for(uint64_t c=0;c<m_ch;c++) {
-        //         std::cout << std::hex << matrix[r][c]+0;
-        //     }
-        // }std::cout << std::endl;
     }
     
     void prec_kib512()
