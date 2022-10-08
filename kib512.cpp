@@ -352,23 +352,10 @@ class Matrix
     GaloisFieldP **res = new GaloisFieldP*[size];
     curve_t curve;
     
-//    explicit Matrix(uint64_t **matrix) {
-//        m1 = nullptr;
-//        m1 = new GaloisFieldP*[size];
-//        //res = nullptr;
-//		//res = new GaloisFieldP*[size];
-//        for(size_t i=0;i<size;i++) {
-//            m1[i] = new GaloisFieldP[size];
-//            res[i] = new GaloisFieldP[size];
-//            
-//            // copy parameter matrix to operate on
-//            for(size_t j=0;j<size;j++) {
-//                m1[i][j] = GaloisFieldP(matrix[i][j],curve.p.x) % curve.p;
-//            }
-//        }
-//        p = curve.p;
-//    }
-    
+    constexpr explicit Matrix(uint64_t **matrix); // declare constructor
+	constexpr explicit Matrix(GaloisFieldP **matrix); // declare constructor
+    constexpr ~Matrix(); // declare destructor
+	
     // square matrix multipication on 2d matrices on GF(p)
     // uses polynomial multipication modulo x^a + x^-b + 1
     // f(x) inspired from operations from modular square root
@@ -394,13 +381,12 @@ class Matrix
     GaloisFieldP* operator[] (int64_t index) {
         return res[index];
     }
-    constexpr explicit Matrix(uint64_t **matrix); // declare constructor
-    constexpr ~Matrix(); // declare destructor
 };
 
 // Matrix constructor
 template<size_t size, typename curve_t>
-constexpr Matrix<size, curve_t>::Matrix(uint64_t **matrix) {
+constexpr Matrix<size, curve_t>::Matrix(uint64_t **matrix)
+{
     m1 = nullptr;
     m1 = new GaloisFieldP*[size];
     //res = nullptr;
@@ -417,15 +403,29 @@ constexpr Matrix<size, curve_t>::Matrix(uint64_t **matrix) {
     p = curve.p;
 }
  
+// Matrix constructor
+template<size_t size, typename curve_t>
+constexpr Matrix<size, curve_t>::Matrix(GaloisFieldP **matrix)
+{
+	m1 = new GaloisFieldP*[size];
+	for(size_t i=0;i<size;i++) {
+		m1[i] = new GaloisFieldP[size];
+	}
+	m1 = matrix;
+}
+
 // Matrix destructor
 template<size_t size, typename curve_t>
-constexpr Matrix<size, curve_t>::~Matrix() {
+constexpr Matrix<size, curve_t>::~Matrix()
+{
 	for(size_t i=0;i<size;i++) {
-	 	//delete[] res[i];
+	 	delete[] res[i];
 		delete[] m1[i];
 	}
-	//delete[] res;
+	delete[] res;
 	delete[] m1;
+	res = nullptr;
+	m1 = nullptr;
 }
 
 // bitwise right-rotate
@@ -495,7 +495,7 @@ inline point_t montgomery_ladder(point_t r0, uint64_t k, uint64_t p,
 
 // pre-processing of kib512
 class Kib512 {
-    private:
+    public:
         Tckp64k1 curve; // curve domain parameters
         uint8_t **matrix;
         uint64_t ***manip_m;
@@ -759,9 +759,12 @@ Kib512::~Kib512() {
         for(int j=0;j<8;j++) {
             delete[] manip_m[i][j];
         }
-        delete[] matrix[i];
 		delete[] manip_m[i];
-    }
+	}
+
+	for(int i=0;i<8;i++) {
+		delete[] matrix[i];
+	}
     delete[] matrix;
     delete[] manip_m;
 }
