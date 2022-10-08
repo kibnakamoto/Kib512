@@ -9,11 +9,11 @@
 #include <vector>
 
 #if !defined(UINT8_MAX)
-    using uint8_t = unsigned char
+    using uint8_t = unsigned char;
 #elif !defined(UINT32_MAX)
-    using uint32_t = unsigned int
+    using uint32_t = unsigned int;
 #elif !defined(UINT64_MAX)
-    using uint64_t = unsigned long long
+    using uint64_t = unsigned long long;
 #endif
 
 // Operators in Galois Field
@@ -31,61 +31,61 @@ class GaloisFieldP {
     }
     
     // modular inverse
-    GaloisFieldP operator~() const;
+    inline GaloisFieldP operator~() const;
     
-    GaloisFieldP operator= (GaloisFieldP const &y) {
+    inline GaloisFieldP operator= (GaloisFieldP const &y) {
         p = y.p;
         x = y.x%p;
         return *this;
     }
     
     // assignment operator for integers
-    GaloisFieldP operator= (uint64_t y) {
+    inline GaloisFieldP operator= (uint64_t y) {
         x = y%p;
         return *this;
     }
     
-    GaloisFieldP operator+ (GaloisFieldP const &y) {
+    inline GaloisFieldP operator+ (GaloisFieldP const &y) {
         GaloisFieldP s(((__uint128_t)x + y.x)%p, p);
         return s;
     }
     
-    GaloisFieldP operator+ (const uint64_t &y) {
+    inline GaloisFieldP operator+ (const uint64_t &y) {
         GaloisFieldP s(((__uint128_t)x + y)%p, p);
         return s;
     }
     
-    GaloisFieldP operator- (const uint64_t &y) {
+    inline GaloisFieldP operator- (const uint64_t &y) {
         GaloisFieldP s(((__uint128_t)((x+p)%p) - y+p)%p, p);
         return s;
     }
     
-    GaloisFieldP operator- (GaloisFieldP const &y) {
+    inline GaloisFieldP operator- (GaloisFieldP const &y) {
         GaloisFieldP s(((__int128_t)x - y.x+p)%p, p);
         return s;
     }
     
-    GaloisFieldP operator- () {
+    inline GaloisFieldP operator- () {
         GaloisFieldP s((-x+p)%p,p);
         return s;
     }
     
-    GaloisFieldP operator-= (GaloisFieldP const &y) {
+    inline GaloisFieldP operator-= (GaloisFieldP const &y) {
         x = ((__int128_t)x - y.x+p)%p;
         return *this;
     }
     
-    GaloisFieldP operator+= (GaloisFieldP const &y) {
+    inline GaloisFieldP operator+= (GaloisFieldP const &y) {
         x = ((__uint128_t)x + y.x)%p;
         return *this;
     }
     
-    GaloisFieldP operator+= (const uint64_t &y) {
+    inline GaloisFieldP operator+= (const uint64_t &y) {
         x = ((__uint128_t)x + y)%p;
         return *this;
     }
     
-    GaloisFieldP operator% (GaloisFieldP const &y) {
+    inline GaloisFieldP operator% (GaloisFieldP const &y) {
         if (y.x != 0) {
             GaloisFieldP s(x%(y.x), p);
             return s;
@@ -94,151 +94,151 @@ class GaloisFieldP {
     }
     
     // modulo for integer type, for overloading modulo for % y.p instead of % y.x
-    GaloisFieldP operator% (const uint64_t &y) {
+    inline GaloisFieldP operator% (const uint64_t &y) {
         GaloisFieldP s(x%y, p);
         return s;
     }
     
-    GaloisFieldP operator%= (const uint64_t &y) {
+    inline GaloisFieldP operator%= (const uint64_t &y) {
         x%= y;
         return *this;
     }
     
-    GaloisFieldP operator%= (GaloisFieldP const &y) {
+    inline GaloisFieldP operator%= (GaloisFieldP const &y) {
         x%= y.x;
         return *this;
     }
     
-    GaloisFieldP operator<<= (GaloisFieldP const &y) {
+    inline GaloisFieldP operator<<= (GaloisFieldP const &y) {
         x = ((__uint128_t)x << y.x)%p;
         return *this;
     }
     
-    GaloisFieldP operator<< (GaloisFieldP const &y) {
+    inline GaloisFieldP operator<< (GaloisFieldP const &y) {
         GaloisFieldP s(((__uint128_t)x << y.x)%p);
         return s;
     }
     
-    GaloisFieldP operator<< (uint64_t &y) {
+    inline GaloisFieldP operator<< (uint64_t &y) {
         GaloisFieldP s(((__uint128_t)x << y)%p, p);
         return s;
     }
 
     
-    GaloisFieldP operator>>= (GaloisFieldP const &y) {
+    inline GaloisFieldP operator>>= (GaloisFieldP const &y) {
         x = (x >> y.x)%p;
         return *this;
     }
     
-    GaloisFieldP operator>> (GaloisFieldP const &y) {
+    inline GaloisFieldP operator>> (GaloisFieldP const &y) {
         GaloisFieldP s((x >> y.x)%p, p);
         return s;
     }
     
-    GaloisFieldP operator>> (uint64_t const &y) {
+    inline GaloisFieldP operator>> (uint64_t const &y) {
         GaloisFieldP s((x >> y)%p, p);
         return s;
     }
     
-    GaloisFieldP operator| (uint64_t const &y) {
+    inline GaloisFieldP operator| (uint64_t const &y) {
         GaloisFieldP s((x | y)%p, p);
         return s;
     }
     
-    GaloisFieldP operator| (GaloisFieldP const &y) {
+    inline GaloisFieldP operator| (GaloisFieldP const &y) {
         GaloisFieldP s((x | y.x)%p, p);
         return s;
     }
     
-    GaloisFieldP operator|= (GaloisFieldP const &y) {
+    inline GaloisFieldP operator|= (GaloisFieldP const &y) {
         x = (x | y.x)%p;
         return *this;
     }
     
-    bool operator> (GaloisFieldP const &y) {
+    inline bool operator> (GaloisFieldP const &y) {
         bool s = x > y.x;
         return s;
     }
     
-    bool operator< (GaloisFieldP const &y) {
+    inline bool operator< (GaloisFieldP const &y) {
         bool s = x < y.x;
         return s;
     }
     
-    bool operator== (GaloisFieldP const &y) {
+    inline bool operator== (GaloisFieldP const &y) {
         bool s = x == y.x;
         return s;
     }
     
-    bool operator!= (uint64_t y) {
+    inline bool operator!= (uint64_t y) {
         bool s = x%p != y%p;
         return s;
     }
     
-    bool operator!= (GaloisFieldP y) {
+    inline bool operator!= (GaloisFieldP y) {
         bool s = x%p != y.x%p;
         return s;
     }
     
-    GaloisFieldP operator& (GaloisFieldP const &y) {
+    inline GaloisFieldP operator& (GaloisFieldP const &y) {
         GaloisFieldP s(x & y.x, p);
         return s;
     }
     
-    bool operator&& (GaloisFieldP const &y) {
+    inline bool operator&& (GaloisFieldP const &y) {
         bool s = x & y.x;
         return s;
     }
 
     
-    GaloisFieldP operator&= (GaloisFieldP const &y) {
+    inline GaloisFieldP operator&= (GaloisFieldP const &y) {
         x = (x & y.x)%p;
         return *this;
     }
     
-    GaloisFieldP operator^ (GaloisFieldP const &y) {
+    inline GaloisFieldP operator^ (GaloisFieldP const &y) {
         GaloisFieldP s((x ^ y.x)%p, p);
         return s;
     }
     
-    GaloisFieldP operator^= (GaloisFieldP const &y) {
+    inline GaloisFieldP operator^= (GaloisFieldP const &y) {
         x = (x ^ y.x)%p;
         return *this;
     }
     
-    GaloisFieldP operator/ (GaloisFieldP const &y) {
+    inline GaloisFieldP operator/ (GaloisFieldP const &y) {
         GaloisFieldP s((x / y.x)%p, p);
         return s;
     }
     
-    GaloisFieldP operator/= (GaloisFieldP const &y) {
+    inline GaloisFieldP operator/= (GaloisFieldP const &y) {
         x = (x / y.x)%p;
         return *this;
     }
     
-    GaloisFieldP operator* (const uint64_t &y) {
+    inline GaloisFieldP operator* (const uint64_t &y) {
         GaloisFieldP mul = GaloisFieldP(((__uint128_t)x*y)%p,p);
         return mul;
     }
     
-    GaloisFieldP operator* (GaloisFieldP y) {
+    inline GaloisFieldP operator* (GaloisFieldP y) {
         GaloisFieldP mul = GaloisFieldP(((__uint128_t)x*y.x)%p,p);
         return mul;
     }
     
-    GaloisFieldP operator*= (GaloisFieldP y) {
+    inline GaloisFieldP operator*= (GaloisFieldP y) {
         x = ((__uint128_t)x*y.x)%p;
         return *this;
     }
     
-    GaloisFieldP operator*= (uint64_t y) {
+    inline GaloisFieldP operator*= (uint64_t y) {
         x = ((__uint128_t)x*y)%p;
         return *this;
     }
 };
 
 // output stream operator
-std::ostream& operator<< (std::ostream& out, GaloisFieldP toprint) {
+inline std::ostream& operator<< (std::ostream& out, GaloisFieldP toprint) {
     out << toprint.x;
     return out;
 }
@@ -246,7 +246,7 @@ std::ostream& operator<< (std::ostream& out, GaloisFieldP toprint) {
 using point_t = std::pair<GaloisFieldP,GaloisFieldP>;
 
 // extended Eucludian Algorithm
-inline GaloisFieldP extended_gcd(GaloisFieldP a, GaloisFieldP b, GaloisFieldP &x)
+GaloisFieldP extended_gcd(GaloisFieldP a, GaloisFieldP b, GaloisFieldP &x)
 {
     x = 1;
     GaloisFieldP y = GaloisFieldP(0,b.p);
@@ -282,7 +282,7 @@ inline GaloisFieldP mod_inv(GaloisFieldP a, GaloisFieldP p) {
 }
 
 // modular inverse
-GaloisFieldP GaloisFieldP::operator~() const {
+inline GaloisFieldP GaloisFieldP::operator~() const {
     GaloisFieldP s(mod_inv(x,p).x, p);
     return s;
 }
@@ -349,22 +349,25 @@ class Matrix
     public:
     GaloisFieldP **m1;
     GaloisFieldP p;
-    GaloisFieldP **res;
+    GaloisFieldP **res = new GaloisFieldP*[size];
     curve_t curve;
     
-    Matrix(uint64_t **matrix) {
-        m1 = nullptr;
-        m1 = new GaloisFieldP*[size];
-        for(size_t i=0;i<size;i++) {
-            m1[i] = new GaloisFieldP[size];
-            
-            // copy parameter matrix to operate on
-            for(size_t j=0;j<size;j++) {
-                m1[i][j] = GaloisFieldP(matrix[i][j],curve.p.x) % curve.p;
-            }
-        }
-        p = curve.p;
-    }
+//    explicit Matrix(uint64_t **matrix) {
+//        m1 = nullptr;
+//        m1 = new GaloisFieldP*[size];
+//        //res = nullptr;
+//		//res = new GaloisFieldP*[size];
+//        for(size_t i=0;i<size;i++) {
+//            m1[i] = new GaloisFieldP[size];
+//            res[i] = new GaloisFieldP[size];
+//            
+//            // copy parameter matrix to operate on
+//            for(size_t j=0;j<size;j++) {
+//                m1[i][j] = GaloisFieldP(matrix[i][j],curve.p.x) % curve.p;
+//            }
+//        }
+//        p = curve.p;
+//    }
     
     // square matrix multipication on 2d matrices on GF(p)
     // uses polynomial multipication modulo x^a + x^-b + 1
@@ -372,16 +375,16 @@ class Matrix
     Matrix operator* (const std::array<std::array<uint64_t,size>,size> m) {
         GaloisFieldP b_((uint64_t)curve.b.x,p.p);
         std::array<GaloisFieldP,3> f = {curve.a,-b_,1};
-        res = nullptr;
-        res = new GaloisFieldP*[size];
+        // res = nullptr;
+		// res = new GaloisFieldP*[size];
         for(size_t i=0;i<size;i++) {
-            res[i] = new GaloisFieldP[size];
+           //  res[i] = new GaloisFieldP[size];
             for(size_t j=0;j<size;j++) {
                 res[i][j].p = p.p;  // change field sizes
                 for(size_t k=0;k<size;k++) {
                     std::array<GaloisFieldP, 3> a = {curve.a, m1[k][j],1};
-                    std::array<GaloisFieldP, 3> b = {-b_,GaloisFieldP(m[i][k],p.p),1};
-                    res[i][j] = res[i][j] + poly_mod<3>(poly_mul<3,3>(a,b),f)[1];
+					std::array<GaloisFieldP, 3> b = {-b_,GaloisFieldP(m[i][k],p.p),1};
+					res[i][j] = res[i][j] + poly_mod<3>(poly_mul<3,3>(a,b),f)[1];
                 }
             }
         }
@@ -391,16 +394,39 @@ class Matrix
     GaloisFieldP* operator[] (int64_t index) {
         return res[index];
     }
-    
-    // ~Matrix() {
-        // for(int i=0;i<size;i++) {
-            // delete[] res[i];
-            // delete[] m1[i];
-        // }
-        // delete[] res;
-        // delete[] m1;
-    // }
+    constexpr explicit Matrix(uint64_t **matrix); // declare constructor
+    constexpr ~Matrix(); // declare destructor
 };
+
+// Matrix constructor
+template<size_t size, typename curve_t>
+constexpr Matrix<size, curve_t>::Matrix(uint64_t **matrix) {
+    m1 = nullptr;
+    m1 = new GaloisFieldP*[size];
+    //res = nullptr;
+  //res = new GaloisFieldP*[size];
+    for(size_t i=0;i<size;i++) {
+        m1[i] = new GaloisFieldP[size];
+        res[i] = new GaloisFieldP[size];
+        
+        // copy parameter matrix to operate on
+        for(size_t j=0;j<size;j++) {
+            m1[i][j] = GaloisFieldP(matrix[i][j],curve.p.x) % curve.p;
+        }
+    }
+    p = curve.p;
+}
+ 
+// Matrix destructor
+template<size_t size, typename curve_t>
+constexpr Matrix<size, curve_t>::~Matrix() {
+	for(size_t i=0;i<size;i++) {
+	 	//delete[] res[i];
+		delete[] m1[i];
+	}
+	//delete[] res;
+	delete[] m1;
+}
 
 // bitwise right-rotate
 inline GaloisFieldP rr(GaloisFieldP x, unsigned int n) { return (x >> n)|(x << (64-n)); }
@@ -449,7 +475,7 @@ inline point_t montgomery_ladder(point_t r0, uint64_t k, uint64_t p,
                                  uint64_t a) {
     point_t r1 = point_double(r0,p,a);
     std::string bits = bin(k);
-    int first_one = bits.find('1');
+    long unsigned int first_one = bits.find('1');
     if (first_one != std::string::npos) {
         bits = bits.substr(first_one+1);
     } else {
@@ -469,7 +495,7 @@ inline point_t montgomery_ladder(point_t r0, uint64_t k, uint64_t p,
 
 // pre-processing of kib512
 class Kib512 {
-    public: // TODO: make private after debugging
+    private:
         Tckp64k1 curve; // curve domain parameters
         uint8_t **matrix;
         uint64_t ***manip_m;
@@ -539,7 +565,7 @@ class Kib512 {
         input+=0x90;
         
         // padding
-        for(int c=0;c<pad;c++) {
+        for(uint32_t c=0;c<pad;c++) {
             input+='0';
         }
         
@@ -562,11 +588,10 @@ class Kib512 {
         // initialize manipulation matrix with input matrix
         manip_m = nullptr;
         manip_m = new uint64_t **[b_size];
-        uint64_t loop_count = 0;
         
         // initialize 3-d matrix to zero to indexes that won't be initialized to
         // values of 2-d matrix
-        for(int i=0;i<b_size;i++) {
+        for(uint64_t i=0;i<b_size;i++) {
             manip_m[i] = new uint64_t *[8];
             manip_m[i][0] = new uint64_t[8];
             for(int j=1;j<8;j++) { // to avoid unnecesary padding, j=1
@@ -585,12 +610,11 @@ class Kib512 {
                     temp or_eq (GaloisFieldP)matrix[j][x+i*8] << 56-x*8;
                 }
                 
-                    manip_m[mmi][0][mmj] = temp.x;
+                manip_m[mmi][0][mmj] = temp.x;
                 mmj = (mmj+1)%8;
             }
             if(mmj%8==0) mmi++;
         }
-       
 		GaloisFieldP *p_inv = nullptr;
 		p_inv = new GaloisFieldP[4];
 		p_inv[0] = 0xb3e45306eb3e4507ULL;
@@ -624,6 +648,7 @@ class Kib512 {
                 }
             }
         }
+		delete[] p_inv;
     }
     
     // compression function
@@ -710,9 +735,12 @@ class Kib512 {
 					hash[0] = tmp3;
 				}
 			}
+			delete[] muls;
 	    	for(int j=0;j<8;j++) {
 	    	    hash[j] += h_copy[j];
+				delete[] result[j];
 			}
+			delete[] result;
         }
     }
 };
@@ -732,11 +760,9 @@ Kib512::~Kib512() {
             delete[] manip_m[i][j];
         }
         delete[] matrix[i];
+		delete[] manip_m[i];
     }
     delete[] matrix;
-    for(int i=0;i<b_size;i++) {
-        delete[] manip_m[i];
-    }
     delete[] manip_m;
 }
 
@@ -760,8 +786,8 @@ int main(int argc, char **argv) {
         for(int i=0;i<8;i++) {
             std::cout << std::setw(16) << std::setfill('0') << std::hex << hash[i] << " ";
         }
-        std::cout << std::endl;
     }
-
+    std::cout << std::endl;
     return 0;
 }
+
