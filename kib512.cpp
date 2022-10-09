@@ -349,7 +349,7 @@ class Matrix
     public:
     GaloisFieldP **m1;
     GaloisFieldP p;
-    GaloisFieldP **res = new GaloisFieldP*[size];
+    GaloisFieldP **res;
     curve_t curve;
     
     constexpr explicit Matrix(uint64_t **matrix); // declare constructor
@@ -389,8 +389,8 @@ constexpr Matrix<size, curve_t>::Matrix(uint64_t **matrix)
 {
     m1 = nullptr;
     m1 = new GaloisFieldP*[size];
-    //res = nullptr;
-  //res = new GaloisFieldP*[size];
+    res = nullptr;
+    res = new GaloisFieldP*[size];
     for(size_t i=0;i<size;i++) {
         m1[i] = new GaloisFieldP[size];
         res[i] = new GaloisFieldP[size];
@@ -407,9 +407,13 @@ constexpr Matrix<size, curve_t>::Matrix(uint64_t **matrix)
 template<size_t size, typename curve_t>
 constexpr Matrix<size, curve_t>::Matrix(GaloisFieldP **matrix)
 {
+	m1 = nullptr;
+	res = nullptr;
 	m1 = new GaloisFieldP*[size];
+	res = new GaloisFieldP*[size];
 	for(size_t i=0;i<size;i++) {
 		m1[i] = new GaloisFieldP[size];
+		res[i] = new GaloisFieldP[size];
 	}
 	m1 = matrix;
 }
@@ -418,14 +422,15 @@ constexpr Matrix<size, curve_t>::Matrix(GaloisFieldP **matrix)
 template<size_t size, typename curve_t>
 constexpr Matrix<size, curve_t>::~Matrix()
 {
-	for(size_t i=0;i<size;i++) {
-	 	delete[] res[i];
-		delete[] m1[i];
-	}
-	delete[] res;
-	delete[] m1;
-	res = nullptr;
-	m1 = nullptr;
+	// Causes segmentation fault if freed, when not freed, causes memory leak. valgrind somehow
+	// ignores the segmentation fault, new is used in constructor but somehow automatically
+	// destroyed before destructor is called.
+	//for(size_t i=0;i<size;i++) {
+	// 	delete[] res[i];
+	//	delete[] m1[i];
+	//}
+	//delete[] res;
+	//delete[] m1;
 }
 
 // bitwise right-rotate
