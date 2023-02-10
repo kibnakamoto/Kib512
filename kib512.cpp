@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <bit>
 #include <vector>
+#include <array>
 
 #if !defined(UINT8_MAX)
     using uint8_t = unsigned char;
@@ -773,29 +774,3 @@ Kib512::~Kib512() {
     delete[] matrix;
     delete[] manip_m;
 }
-
-int main(int argc, char **argv) {
-    std::string in = "";
-    if (argc == 1) {
-        in = "abc";
-        Kib512 kib512_hash = Kib512(in);
-        GaloisFieldP *hash = kib512_hash.hash;
-        std::cout << "\n\nhash " << in << ":";
-        for(int i=0;i<8;i++) {
-            std::cout << std::hex << hash[i] << " ";
-        }
-    } else {
-        for(int i=1;i<argc;i++) {
-            in += std::string(argv[i]);
-        }
-        Kib512 kib512_hash = Kib512(in);
-        GaloisFieldP *hash = kib512_hash.hash;
-        std::cout << "\n\nhash " << in << ":\n";
-        for(int i=0;i<8;i++) {
-            std::cout << std::setw(16) << std::setfill('0') << std::hex << hash[i] << " ";
-        }
-    }
-    std::cout << std::endl;
-    return 0;
-}
-
